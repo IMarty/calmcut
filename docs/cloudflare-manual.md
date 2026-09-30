@@ -1,5 +1,8 @@
 # Infrastructure Cloudflare — ce qui se fait à la main
 
+> **Tu cherches quoi faire, dans quel ordre, clic par clic ?**
+> → [`docs/mise-en-route.md`](mise-en-route.md). Ce fichier-ci est la référence technique.
+
 Tout ce qui peut passer par `wrangler` passe par `wrangler`. Ce fichier ne liste que ce qui
 **exige** le dashboard ou une décision d'Igor.
 
@@ -7,10 +10,21 @@ Tout ce qui peut passer par `wrangler` passe par `wrangler`. Ce fichier ne liste
 > On reste dans les offres gratuites Cloudflare et GitHub (principe 3). Si une limite gratuite
 > est atteinte, cela fait l'objet d'une tâche Akiflow, pas d'un upgrade.
 
-## État au 2026-09-30 (fin de M0)
+## État au 2026-09-30 (fin de M3)
 
-Rien n'est encore créé côté Cloudflare. L'infrastructure arrive au **jalon M3**.
-`wrangler` n'est pas installé : il le sera comme dépendance de dev de `workers/api`.
+Le code de l'API est prêt et testé, mais **rien n'existe encore côté Cloudflare**. Les
+`database_id` de `workers/api/wrangler.jsonc` sont des placeholders, et le déploiement preview
+attend les étapes 1 et 2 ci-dessous.
+
+Ce qui est déjà vérifié sans identifiants :
+
+```bash
+cd workers/api
+bunx wrangler deploy --dry-run --env preview    # valide la configuration et bundle le Worker
+```
+
+Le Worker pèse **68 Ko gzip**, très loin de la limite. Les 89 tests d'intégration tournent dans
+`workerd` avec un vrai D1 local, donc le SQL des migrations est déjà éprouvé.
 
 ## 1. À faire en CLI (jalon M3)
 
@@ -23,8 +37,15 @@ wrangler d1 create calmcut-db-preview
 wrangler r2 bucket create calmcut-data
 ```
 
-Reporter les `database_id` renvoyés dans `workers/api/wrangler.jsonc`, sections `env.preview` et
-`env.production`.
+Reporter les `database_id` renvoyés dans `workers/api/wrangler.jsonc` — il y a **trois** endroits :
+la section racine, `env.preview` et `env.production`. Puis appliquer les migrations :
+
+```bash
+bun run --filter '@calmcut/db' migrate:preview
+```
+
+Le binding Rate Limiting utilise `namespace_id: "1001"`. Ce numéro est libre et propre au compte :
+il suffit qu'il soit stable, et que deux bindings différents n'utilisent pas le même.
 
 ## 2. À faire dans le dashboard — action d'Igor
 

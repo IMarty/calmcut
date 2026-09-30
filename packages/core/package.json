@@ -1,7 +1,7 @@
 {
   "name": "@calmcut/core",
   "version": "0.0.0",
-  "description": "Types, format de timeline et contrats partagés de CalmCut",
+  "description": "Types, format de timeline et contrats partag\u00e9s de CalmCut",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "private": false,
@@ -9,14 +9,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./schema.json": "./schema.json"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "schema.json"
   ],
   "sideEffects": false,
   "scripts": {

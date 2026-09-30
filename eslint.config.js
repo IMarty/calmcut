@@ -58,6 +58,21 @@ export default tseslint.config(
     },
   },
   {
+    // AudioWorklet : ce fichier est servi tel quel au thread audio, jamais bundlé.
+    // Ses globales n'existent que dans l'AudioWorkletGlobalScope.
+    files: ['apps/*/public/*-processor.js'],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: {
+      globals: {
+        AudioWorkletProcessor: 'readonly',
+        registerProcessor: 'readonly',
+        currentTime: 'readonly',
+        currentFrame: 'readonly',
+        sampleRate: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.test.ts'],
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'off',
