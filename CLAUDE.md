@@ -204,6 +204,13 @@ le compagnon refuse une version inconnue et le batch doit les reconstruire.
 - Jamais de `--force` sur `main`. Jamais de secret en clair. Jamais d'action payante sans validation.
 - **Fin de session** : mettre à jour ce fichier (état d'avancement) et les tâches Akiflow.
 
+### Actions humaines en attente
+
+[`docs/mise-en-route.md`](docs/mise-en-route.md) est le guide pas à pas d'Igor, dans l'ordre où
+faire les choses. **Le tenir à jour** : quand une étape est franchie, la marquer faite plutôt que
+de la laisser traîner. Quand un jalon exige une nouvelle action humaine, l'y ajouter au lieu de
+créer un document parallèle.
+
 ### Suivi Akiflow
 
 Une tâche par jalon (`M0 — Setup…` → `M9 — Lancement`), 3 à 6 sous-tâches maximum, pas de

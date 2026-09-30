@@ -1,5 +1,8 @@
 # Infrastructure Cloudflare — ce qui se fait à la main
 
+> **Tu cherches quoi faire, dans quel ordre, clic par clic ?**
+> → [`docs/mise-en-route.md`](mise-en-route.md). Ce fichier-ci est la référence technique.
+
 Tout ce qui peut passer par `wrangler` passe par `wrangler`. Ce fichier ne liste que ce qui
 **exige** le dashboard ou une décision d'Igor.
 

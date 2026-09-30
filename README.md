@@ -62,6 +62,8 @@ bun install
 bun run ci
 ```
 
+Pour la mise en route de l'infrastructure : [`docs/mise-en-route.md`](docs/mise-en-route.md).
+
 ## Licences
 
 | Quoi                                                 | Licence                                    |
