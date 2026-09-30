@@ -15,8 +15,9 @@ doc ; anglais pour les identifiants.
 | Jalon  | Objet                                                   | État       |
 | ------ | ------------------------------------------------------- | ---------- |
 | **M0** | Socle : monorepo, qualité, CI, docs, licences           | ✅ terminé |
-| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | ⏭️ suivant |
-| M2→M9  | Voir `docs/roadmap.md`                                  | à faire    |
+| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | ✅ terminé |
+| **M2** | POC compagnon en mode démo (`.srt` local + micro)       | ⏭️ suivant |
+| M3→M9  | Voir `docs/roadmap.md`                                  | à faire    |
 
 **Fait à M0** — monorepo Bun (3 workspaces), TypeScript strict avec project references, ESLint +
 Prettier + Vitest, CI GitHub (format, lint, typecheck, tests, build, scan de secrets), Changesets,
@@ -34,13 +35,22 @@ sans `dist`) **et sur GitHub**.
 > l'historique public. Voir `docs/adr/0003`. Règle à tenir : ce dépôt peut dire qu'un filigrane
 > existe, jamais comment il est calibré.
 
-**Ce que M1 doit produire** — dans `packages/sync` : construction de l'index binaire, histogramme
-d'offsets, algorithme de verrouillage (§7.3 du cahier des charges), validé sur des timelines
-synthétiques (décalage, échelle 25/23,976, pauses, coupures publicitaires). La normalisation, les
-trigrammes et le hachage sont déjà faits et testés.
+**Fait à M1** — `@calmcut/sync` porte la chaîne complète : format binaire `CCSY` (construction,
+lecture dichotomique, refus d'une version inconnue), `hearSegments` + `estimateOffset` (histogramme
+d'offsets), et `SyncTracker` (machine à états écoute → verrouillage → horloge locale, détection de
+saut, perte de verrou). `@calmcut/core` expose son JSON Schema. 119 tests.
+
+Validé sur timelines synthétiques : décalage constant, échelle 25/23,976, pause courte, pause
+longue, double coupure publicitaire, transcription dégradée à 15 % et 30 % d'erreurs de mots.
+
+**Ce que M2 doit produire** — le POC du compagnon en mode démo : squelette Astro, un îlot Svelte sur
+`/watch`, Whisper tiny en WebGPU dans un Web Worker, capture micro en AudioWorklet, chargement d'un
+`.srt` local, et `packages/player-actions` (bruit blanc, compte à rebours). C'est le jalon qui dit si
+le produit est viable : la synchro doit se verrouiller en moins de 30 s dans un vrai salon.
 
 **Décisions prises** (voir `docs/adr/`) : périmètre restreint du socle M0 (0001), publication de
-`@calmcut/phobias` sur npm (0002), dépôt public et filigrane séparé (0003).
+`@calmcut/phobias` sur npm (0002), dépôt public et filigrane séparé (0003), estimation du débit de
+lecture en plus du décalage (0004).
 
 ---
 
@@ -128,7 +138,7 @@ apps/scanner      CLI d'analyse de médiathèque locale                         
 workers/api       Hono : API publique, ingestion, auth d'appareil                       (M3)
 workers/cron      agrégation votes → statuts, republication R2                          (M7)
 packages/core     → npm @calmcut/core : types, format timeline, Detector                 ✅
-packages/sync     → npm @calmcut/sync : normalisation, index, lock (zéro dépendance)     ✅ partiel
+packages/sync     → npm @calmcut/sync : normalisation, index, lock (zéro dépendance)     ✅
 packages/phobias  → npm @calmcut/phobias : profils déclaratifs                            ✅
 packages/db       schéma Drizzle + migrations D1 (interne)                               (M3)
 packages/watermark → déplacé dans le dépôt privé calmcut-watermark (ADR 0003)
@@ -200,6 +210,13 @@ recommandation.
   un `build` préalable et échoueraient sur un checkout propre, où `dist` n'existe pas encore.
   **En ajoutant un paquet, ajouter les deux entrées**, et vérifier avec `rm -rf packages/*/dist
 && bun run ci`.
+- **`packages/sync/src/testing/` est exclu du build** (`tsconfig.json` de `sync`) : les générateurs
+  de timelines synthétiques servent aux tests et ne sont pas publiés.
+- **Ne jamais nommer une variable `window`, `process` ou `Buffer` dans `packages/sync`** : un test
+  de neutralité d'environnement échoue sur le nom, commentaires exclus. C'est voulu — ce paquet doit
+  tourner en navigateur, en Worker, sous Bun, et être portable sur la JVM.
+- **`ajv` est CJS** : sous `moduleResolution: nodenext`, l'import par défaut pointe sur l'espace de
+  noms du module. Utiliser l'import nommé (`import { Ajv2020 } from 'ajv/dist/2020.js'`).
 - **Les workflows `deploy` et `release` sont éteints par défaut**, derrière les variables de dépôt
   `DEPLOY_ENABLED`, `RELEASE_ENABLED` et `EXTENSION_BUILD_ENABLED`. C'est volontaire : on ne déploie
   pas contre une infrastructure qui n'existe pas. Voir `docs/cloudflare-manual.md`.
