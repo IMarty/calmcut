@@ -1,8 +1,23 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/sync" },
-    { "path": "./packages/phobias" }
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/sync"
+    },
+    {
+      "path": "./packages/phobias"
+    },
+    {
+      "path": "./packages/player-actions"
+    },
+    {
+      "path": "./packages/db"
+    },
+    {
+      "path": "./tools/seed"
+    }
   ]
 }

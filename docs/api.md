@@ -26,7 +26,7 @@ Crée un appareil anonyme. Aucun compte, aucune adresse e-mail.
 // requête
 { "turnstileToken": "0.abc…" }
 
-// réponse 200
+// réponse 201
 {
   "deviceId": "01JBQ…",          // ULID
   "token": "eyJhbGci…",          // JWT HS256, sub=deviceId, exp=24h, kid

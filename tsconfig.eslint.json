@@ -1,5 +1,5 @@
 {
-  "//": "Projet de lint uniquement : couvre les tests et les fichiers de configuration, que les tsconfig de build excluent volontairement pour ne pas les publier dans dist. Les `paths` resolvent @calmcut/* vers les sources et non vers dist : sans cela, `lint` exigerait un `build` prealable, et echouerait sur un checkout propre.",
+  "//": "Projet de lint uniquement : couvre les tests et les fichiers de configuration, que les tsconfig de build excluent volontairement pour ne pas les publier dans dist. Les `paths` resolvent @calmcut/* vers les sources et non vers dist : sans cela, `lint` exigerait un `build` prealable, et echouerait sur un checkout propre. TOUT nouveau workspace doit etre ajoute ici ET dans l'alias de vitest.config.ts.",
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": false,
@@ -8,15 +8,18 @@
     "noEmit": true,
     "allowJs": true,
     "checkJs": false,
-    "types": ["node"],
+    "types": ["node", "@cloudflare/workers-types"],
     "lib": ["ES2022", "DOM"],
     "baseUrl": ".",
     "paths": {
       "@calmcut/core": ["./packages/core/src/index.ts"],
       "@calmcut/sync": ["./packages/sync/src/index.ts"],
-      "@calmcut/phobias": ["./packages/phobias/src/index.ts"]
+      "@calmcut/phobias": ["./packages/phobias/src/index.ts"],
+      "@calmcut/player-actions": ["./packages/player-actions/src/index.ts"],
+      "@calmcut/db": ["./packages/db/src/index.ts"],
+      "@calmcut/seed": ["./tools/seed/src/index.ts"]
     }
   },
-  "include": ["**/*.ts", "**/*.js"],
+  "include": ["**/*.ts", "**/*.js", "**/*.mjs"],
   "exclude": ["node_modules", "**/node_modules/**", "**/dist/**", "**/.wrangler/**", "**/.wxt/**"]
 }

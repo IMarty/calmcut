@@ -7,7 +7,7 @@ Chaque jalon = une branche, une ou plusieurs PR, une CI verte, et un critère d'
 | #      | Jalon                                                    | Critère d'acceptation                                                                                                                | État        |
 | ------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
 | **M0** | Setup : repos, monorepo Bun, lint/format/tests, CI       | `bun run ci` passe en local et sur GitHub                                                                                            | 🟡 en cours |
-| **M1** | `core`, `sync`, `phobias` complets + tests               | Algorithme de lock validé sur des cas synthétiques (décalage, échelle 25/23,976, pauses, coupures publicitaires)                     | ⏭️ suivant  |
+| **M1** | `core`, `sync`, `phobias` complets + tests               | Algorithme de lock validé sur des cas synthétiques (décalage, échelle 25/23,976, pauses, coupures publicitaires)                     | ✅ terminé  |
 | **M2** | POC compagnon en mode démo (`.srt` local + micro)        | Igor lance un film avec son `.srt` : la synchro se verrouille en moins de 30 s, le compte à rebours et le bruit blanc sont à l'heure | à faire     |
 | **M3** | D1 + Drizzle + API Hono + infra Cloudflare preview       | Tests d'intégration (Miniflare / `wrangler dev`) verts, déploiement preview OK                                                       | à faire     |
 | **M4** | `calmcut-batch` : T0 + T1 + index de synchro → ingestion | 20 titres de test ingérés, segments cohérents sur 3 films à rats connus                                                              | à faire     |
@@ -50,6 +50,35 @@ choix d'un hachage (FNV-1a, encodage UTF-8 fait à la main) trivial à réimplé
 
 Flou dégressif et suivi des progrès, pensé pour accompagner une TCC. **Hors périmètre actuel** :
 seul le feature flag `exposure-mode` est prévu (M9). Tout le reste de CalmCut reste gratuit.
+
+### ⚠️ Re-séquencement en cours
+
+Les tests de terrain ont invalidé l'hypothèse de §7.2 : les sous-titres ne peuplent pas la base.
+Voir [`detection-pipeline.md`](detection-pipeline.md), [`scene-alert-app.md`](scene-alert-app.md)
+et `adr/0008`.
+
+|                           | Avant             | Après                                 |
+| ------------------------- | ----------------- | ------------------------------------- |
+| Moteur de peuplement      | T1 sous-titres    | **scanner multimodal + signalements** |
+| `apps/scanner`            | phase 2           | **prioritaire**                       |
+| M5 site SEO, M6 extension | avant les données | **après**                             |
+| Nouvelle surface          | —                 | `apps/scene-alert` (mobile)           |
+
+### Audiodescription comme source T1 — écartée
+
+**Écartée** : aucun service ne sert ce texte à la demande pour des films commerciaux, et les
+corpus de recherche sont sous licence restreinte. Conservé ici pour mémoire — les sous-titres
+disent ce qui est **dit**, l'audiodescription dit ce qui est **montré**. Pour CalmCut, c'est la différence entre un
+signal inexploitable et un signal presque parfait — « un rat traverse la cuisine » est
+exactement ce qu'on cherche, avec son horaire.
+
+Aucun service ne sert ce texte à la demande pour des films commerciaux : la piste AD est un
+flux **audio** embarqué dans les lecteurs. Mais CalmCut sait déjà transcrire de l'audio côté
+client. Un contributeur active la piste d'audiodescription une fois, le compagnon la
+transcrit **localement**, en extrait des horaires, et ne remonte que des timestamps — le
+texte est jeté, comme pour les sous-titres (principe 1).
+
+C'est la même architecture que `apps/scanner`, appliquée à une source bien meilleure.
 
 ### Détection IA temps réel
 

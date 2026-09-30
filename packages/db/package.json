@@ -1,0 +1,37 @@
+{
+  "name": "@calmcut/db",
+  "version": "0.0.0",
+  "description": "Sch\u00e9ma Drizzle et migrations D1 (interne)",
+  "license": "PROPRIETARY",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "migrations",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc --build",
+    "generate": "drizzle-kit generate",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "migrate:local": "wrangler d1 migrations apply calmcut-db-preview --local --config ../../workers/api/wrangler.jsonc",
+    "migrate:preview": "wrangler d1 migrations apply calmcut-db-preview --remote --config ../../workers/api/wrangler.jsonc --env preview",
+    "migrate:production": "wrangler d1 migrations apply calmcut-db --remote --config ../../workers/api/wrangler.jsonc --env production"
+  },
+  "dependencies": {
+    "@calmcut/core": "workspace:*",
+    "drizzle-orm": "^0.45.3"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.11"
+  }
+}
