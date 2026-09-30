@@ -12,34 +12,35 @@ doc ; anglais pour les identifiants.
 
 ## État d'avancement
 
-| Jalon  | Objet                                                   | État                     |
-| ------ | ------------------------------------------------------- | ------------------------ |
-| **M0** | Socle : monorepo, qualité, CI, docs, licences           | 🟡 code fait, CI bloquée |
-| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | en attente de M0         |
-| M2→M9  | Voir `docs/roadmap.md`                                  | à faire                  |
-
-> **⛔ M0 n'est pas terminé.** Son critère d'acceptation est « `bun run ci` passe en local **et sur
-> GitHub** ». En local : vert, 54 tests. Sur GitHub : **aucun job ne démarre**, le compte est bloqué
-> côté facturation Actions (« recent account payments have failed or your spending limit needs to be
-> increased »). La PR [#1](https://github.com/IMarty/calmcut/pull/1) reste ouverte jusque-là.
->
-> Je n'ai pas touché à la limite de dépense : c'est une action payante (principe 3). Tâche Akiflow
-> créée pour Igor.
->
-> **Quand Actions repart** : relancer la CI de la PR #1, ajouter le check requis au ruleset de `main`
-> (`gh api -X PUT repos/IMarty/calmcut/rulesets/24247388`), fusionner, puis attaquer M1.
+| Jalon  | Objet                                                   | État       |
+| ------ | ------------------------------------------------------- | ---------- |
+| **M0** | Socle : monorepo, qualité, CI, docs, licences           | ✅ terminé |
+| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | ⏭️ suivant |
+| M2→M9  | Voir `docs/roadmap.md`                                  | à faire    |
 
 **Fait à M0** — monorepo Bun (3 workspaces), TypeScript strict avec project references, ESLint +
 Prettier + Vitest, CI GitHub (format, lint, typecheck, tests, build, scan de secrets), Changesets,
-licences, cinq documents de conception, garde-fou de CI sur les paquets publiés.
+licences, quatre documents de conception, trois ADR, garde-fou de CI sur les paquets publiés.
+
+Critère d'acceptation atteint : `bun run ci` est vert en local (54 tests, y compris depuis un état
+sans `dist`) **et sur GitHub**.
+
+> **Le dépôt est public.** Les minutes GitHub Actions sont soumises à la limite de dépense du compte
+> sur un dépôt privé, ce qui bloquait toute exécution ; elles sont gratuites et illimitées en public.
+> Relever la limite aurait été une action payante, donc contraire au principe 3.
+>
+> En conséquence, **le filigrane vit dans le dépôt privé
+> [`calmcut-watermark`](https://github.com/IMarty/calmcut-watermark)** et n'a jamais figuré dans
+> l'historique public. Voir `docs/adr/0003`. Règle à tenir : ce dépôt peut dire qu'un filigrane
+> existe, jamais comment il est calibré.
 
 **Ce que M1 doit produire** — dans `packages/sync` : construction de l'index binaire, histogramme
 d'offsets, algorithme de verrouillage (§7.3 du cahier des charges), validé sur des timelines
 synthétiques (décalage, échelle 25/23,976, pauses, coupures publicitaires). La normalisation, les
 trigrammes et le hachage sont déjà faits et testés.
 
-**Décisions prises** (voir `docs/adr/`) : périmètre restreint du socle M0 (ADR 0001), publication de
-`@calmcut/phobias` sur npm (ADR 0002).
+**Décisions prises** (voir `docs/adr/`) : périmètre restreint du socle M0 (0001), publication de
+`@calmcut/phobias` sur npm (0002), dépôt public et filigrane séparé (0003).
 
 ---
 

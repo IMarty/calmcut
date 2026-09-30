@@ -4,28 +4,31 @@ Chaque jalon = une branche, une ou plusieurs PR, une CI verte, et un critère d'
 **vérifié** avant de passer au suivant. Le suivi vit dans Akiflow ; ce fichier est la référence
 écrite.
 
-| #      | Jalon                                                    | Critère d'acceptation                                                                                                                | État          |
-| ------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| **M0** | Setup : repos, monorepo Bun, lint/format/tests, CI       | `bun run ci` passe en local et sur GitHub                                                                                            | 🟡 en cours   |
-| **M1** | `core`, `sync`, `phobias` complets + tests               | Algorithme de lock validé sur des cas synthétiques (décalage, échelle 25/23,976, pauses, coupures publicitaires)                     | bloqué par M0 |
-| **M2** | POC compagnon en mode démo (`.srt` local + micro)        | Igor lance un film avec son `.srt` : la synchro se verrouille en moins de 30 s, le compte à rebours et le bruit blanc sont à l'heure | à faire       |
-| **M3** | D1 + Drizzle + API Hono + infra Cloudflare preview       | Tests d'intégration (Miniflare / `wrangler dev`) verts, déploiement preview OK                                                       | à faire       |
-| **M4** | `calmcut-batch` : T0 + T1 + index de synchro → ingestion | 20 titres de test ingérés, segments cohérents sur 3 films à rats connus                                                              | à faire       |
-| **M5** | Site Astro : fiches SEO, recherche, compagnon, légal     | Lighthouse 100 en perf, ≥ 95 en SEO et accessibilité, budgets JS tenus en CI, aucun timestamp précis dans le HTML public             | à faire       |
-| **M6** | Extension WXT : Netflix + YouTube, puis Disney+ et Prime | Segment appliqué à moins de 150 ms d'écart sur un titre de test, `Alt+R` fonctionnel                                                 | à faire       |
-| **M7** | Signalements, votes, réputation, cron, modération        | Scénarios asymétriques testés : 1 signalement active, 5 votes pondérés désactivent                                                   | à faire       |
-| **M8** | Anti-aspiration : quotas, rate limiting, watermark¹      | Un dump simulé de 200 titres identifie le bon bucket (p < 1e-6)                                                                      | à faire       |
-| **M9** | Lancement : README, docs, dons, PostHog, feature flag    | Checklist de lancement validée par Igor                                                                                              | à faire       |
+| #      | Jalon                                                    | Critère d'acceptation                                                                                                                | État        |
+| ------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| **M0** | Setup : repos, monorepo Bun, lint/format/tests, CI       | `bun run ci` passe en local et sur GitHub                                                                                            | 🟡 en cours |
+| **M1** | `core`, `sync`, `phobias` complets + tests               | Algorithme de lock validé sur des cas synthétiques (décalage, échelle 25/23,976, pauses, coupures publicitaires)                     | ⏭️ suivant  |
+| **M2** | POC compagnon en mode démo (`.srt` local + micro)        | Igor lance un film avec son `.srt` : la synchro se verrouille en moins de 30 s, le compte à rebours et le bruit blanc sont à l'heure | à faire     |
+| **M3** | D1 + Drizzle + API Hono + infra Cloudflare preview       | Tests d'intégration (Miniflare / `wrangler dev`) verts, déploiement preview OK                                                       | à faire     |
+| **M4** | `calmcut-batch` : T0 + T1 + index de synchro → ingestion | 20 titres de test ingérés, segments cohérents sur 3 films à rats connus                                                              | à faire     |
+| **M5** | Site Astro : fiches SEO, recherche, compagnon, légal     | Lighthouse 100 en perf, ≥ 95 en SEO et accessibilité, budgets JS tenus en CI, aucun timestamp précis dans le HTML public             | à faire     |
+| **M6** | Extension WXT : Netflix + YouTube, puis Disney+ et Prime | Segment appliqué à moins de 150 ms d'écart sur un titre de test, `Alt+R` fonctionnel                                                 | à faire     |
+| **M7** | Signalements, votes, réputation, cron, modération        | Scénarios asymétriques testés : 1 signalement active, 5 votes pondérés désactivent                                                   | à faire     |
+| **M8** | Anti-aspiration : quotas, rate limiting, watermark¹      | Un dump simulé de 200 titres identifie le bon bucket (p < 1e-6)                                                                      | à faire     |
+| **M9** | Lancement : README, docs, dons, PostHog, feature flag    | Checklist de lancement validée par Igor                                                                                              | à faire     |
 
-## M0 — ce qui reste
+## M0 — comment le blocage a été levé
 
-Le code est livré et `bun run ci` est vert en local (54 tests). La moitié distante du critère
-d'acceptation n'est pas atteinte : **GitHub Actions ne démarre aucun job**, pour une raison de
-facturation du compte (`recent account payments have failed or your spending limit needs to be
-increased`). La PR #1 reste ouverte.
+La CI ne démarrait pas : sur un dépôt **privé**, les minutes GitHub Actions sont décomptées d'un
+quota, donc soumises à la limite de dépense du compte, qui était bloquante. Sur un dépôt **public**
+elles sont gratuites et illimitées — vérifié empiriquement avec un dépôt jetable avant de toucher à
+`calmcut`.
 
-Rien n'a été fait pour contourner : augmenter une limite de dépense est une action payante, elle
-revient à Igor (principe 3).
+Le dépôt est donc public, et le filigrane a été extrait vers le dépôt privé `calmcut-watermark`, sans
+jamais avoir figuré dans l'historique public (vérifié par clone miroir). Voir `docs/adr/0003`.
+
+Aucune limite de dépense n'a été relevée : ç'aurait été une action payante (principe 3), et le
+principe 3 demande précisément de rester dans les offres gratuites.
 
 ## Après M9
 
