@@ -1,0 +1,29 @@
+name: Nouvelle phobie
+description: Proposer l'ajout d'une phobie au catalogue
+labels: [phobia]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Phobie
+      placeholder: Trypophobie
+    validations:
+      required: true
+  - type: textarea
+    id: cues
+    attributes:
+      label: Indices exploitables
+      description: |
+        Un profil de phobie est purement déclaratif (`packages/phobias`). Plus tu donnes
+        d'indices concrets, plus l'ajout est simple.
+      placeholder: |
+        - Mots-clés FR / EN :
+        - Indications sonores SDH typiques :
+        - Ce qui est visible à l'écran :
+    validations:
+      required: true
+  - type: dropdown
+    id: action
+    attributes:
+      label: Protection la plus adaptée
+      options: [Bruit blanc, Flou, Écran noir, Coupure du son]

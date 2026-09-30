@@ -1,0 +1,50 @@
+name: Bug
+description: Quelque chose ne fonctionne pas comme prévu
+labels: [bug]
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface concernée
+      options:
+        - Site web (fiches, recherche)
+        - Compagnon web (/watch)
+        - Extension navigateur
+        - API
+        - Batch
+        - Autre / je ne sais pas
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ce que tu attendais
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Ce qui s'est passé
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Comment le reproduire
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Navigateur, OS, plateforme de streaming
+      placeholder: Chrome 141 / macOS 27 / Netflix
+  - type: checkboxes
+    id: no-content
+    attributes:
+      label: Avant d'envoyer
+      options:
+        - label: Je n'ai joint ni extrait vidéo, ni audio, ni fichier de sous-titres
+          required: true

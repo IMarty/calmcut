@@ -1,0 +1,40 @@
+name: Scène manquante ou fausse alerte
+description: Une scène phobogène n'est pas protégée, ou une alerte se déclenche pour rien
+labels: [data]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Le bouton « 🐀 Là ! » du compagnon ou de l'extension est bien plus rapide** et alimente
+        directement la base. Cette issue sert aux cas que le signalement ne couvre pas :
+        un titre absent, un mauvais mapping de version, un problème systématique.
+  - type: input
+    id: title
+    attributes:
+      label: Film ou épisode
+      placeholder: Ratatouille (2007)
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Nature du problème
+      options:
+        - Scène phobogène non protégée
+        - Alerte déclenchée sans raison
+        - Décalage systématique de la timeline
+        - Titre absent de la base
+    validations:
+      required: true
+  - type: input
+    id: phobia
+    attributes:
+      label: Phobie concernée
+      placeholder: rats
+  - type: textarea
+    id: details
+    attributes:
+      label: Détails
+      description: Plateforme, version regardée, et — si tu l'as — la position approximative.
+    validations:
+      required: true

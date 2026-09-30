@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Signaler une scène manquante ou une fausse alerte
+    url: https://github.com/IMarty/calmcut/issues/new?template=missing-scene.yml
+    about: Utilisez plutôt le bouton « 🐀 Là ! » dans le compagnon ou l'extension — c'est instantané.
