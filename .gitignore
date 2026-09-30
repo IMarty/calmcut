@@ -1,0 +1,41 @@
+# deps
+node_modules/
+.bun/
+
+# build
+dist/
+build/
+.output/
+.astro/
+.wrangler/
+.wxt/
+*.tsbuildinfo
+
+# env & secrets — jamais committés (cf. principe 8)
+.env
+.env.*
+!.env.example
+.dev.vars
+*.pem
+wrangler.local.toml
+
+# tests & outils
+coverage/
+playwright-report/
+test-results/
+.vitest/
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# données locales de dev (jamais de contenu protégé dans le repo)
+/local/
+*.srt
+*.vtt
+*.wav
+*.mp3
+*.mp4

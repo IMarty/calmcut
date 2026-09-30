@@ -1,0 +1,19 @@
+Copyright (c) 2026 Igor Marty. Tous droits réservés.
+
+Ce dépôt est propriétaire. Aucune autorisation n'est accordée de copier, modifier,
+distribuer ou utiliser ce code, en tout ou partie, sans accord écrit préalable de
+l'auteur.
+
+Deux exceptions, qui portent leur propre licence :
+
+1. Les paquets publiés sur npm — `packages/core` (@calmcut/core),
+   `packages/sync` (@calmcut/sync) et `packages/phobias` (@calmcut/phobias) —
+   sont sous **GNU AGPL-3.0-or-later**. Le texte de la licence est dans le
+   fichier LICENSE de chaque paquet.
+
+2. Les **données** publiées par CalmCut (segments, timestamps, labels, statuts)
+   sont sous **Open Database License (ODbL) 1.0**. Voir DATA_LICENSE.md.
+
+Ce dépôt ne contient aucun contenu protégé par le droit d'auteur appartenant à
+des tiers : ni vidéo, ni audio, ni texte de sous-titres. Voir CLAUDE.md,
+principe 1.
