@@ -51,6 +51,21 @@ choix d'un hachage (FNV-1a, encodage UTF-8 fait à la main) trivial à réimplé
 Flou dégressif et suivi des progrès, pensé pour accompagner une TCC. **Hors périmètre actuel** :
 seul le feature flag `exposure-mode` est prévu (M9). Tout le reste de CalmCut reste gratuit.
 
+### Audiodescription comme source T1
+
+Piste ouverte par un constat de terrain : les sous-titres disent ce qui est **dit**,
+l'audiodescription dit ce qui est **montré**. Pour CalmCut, c'est la différence entre un
+signal inexploitable et un signal presque parfait — « un rat traverse la cuisine » est
+exactement ce qu'on cherche, avec son horaire.
+
+Aucun service ne sert ce texte à la demande pour des films commerciaux : la piste AD est un
+flux **audio** embarqué dans les lecteurs. Mais CalmCut sait déjà transcrire de l'audio côté
+client. Un contributeur active la piste d'audiodescription une fois, le compagnon la
+transcrit **localement**, en extrait des horaires, et ne remonte que des timestamps — le
+texte est jeté, comme pour les sous-titres (principe 1).
+
+C'est la même architecture que `apps/scanner`, appliquée à une source bien meilleure.
+
 ### Détection IA temps réel
 
 `tabCapture` dans l'extension, YOLO-World / YOLO11n via `onnxruntime-web`. Hors périmètre : seule

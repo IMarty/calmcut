@@ -277,6 +277,16 @@ recommandation.
   les protections, puisque les scènes viennent du même fichier. Ne jamais « corriger » ce décalage
   en déplaçant la position : cela casserait un cas qui fonctionne. Le diagnostic distingue un
   décalage stable (bénin) d'une dérive (vrai problème).
+- **Une mention n'est pas une occurrence** (ADR 0007). `detectFromSubtitles` ne produit des
+  segments protégés qu'à partir des **indications sonores SDH** ; les mots-clés du dialogue
+  passent par `mentionsInSubtitles` et n'alimentent qu'un indicateur de titre. Un dialogue qui
+  parle d'un rat n'indique presque jamais qu'un rat soit à l'écran : confondre les deux avait
+  produit neuf faux positifs sur neuf.
+- **Ne jamais écrire `\b` dans un motif de phobie.** En JavaScript `\b` est défini sur l'ASCII,
+  donc `/\brat\b/` reconnaît « raté ». Utiliser le helper `word()` de `profiles.ts`, qui pose des
+  frontières Unicode.
+- **Les indications sonores sont nominales** (`couinements`, pas `couine`) : une forme conjuguée
+  décrit souvent une personne — `[couine avec enthousiasme]` est un humain.
 - **`detectFromSubtitles` renvoie des indices de répliques, jamais leur texte.** Ce paquet est lu
   par `calmcut-batch`, où le texte des sous-titres doit être jeté après traitement (principe 1) :
   le faire remonter dans le type de retour y mettrait un piège permanent. L'appelant qui possède
@@ -290,6 +300,10 @@ recommandation.
 - **La langue de Whisper est obligatoire et typée comme telle.** Ne jamais la rendre optionnelle :
   sans elle, Whisper transcrit en anglais et le verrouillage est impossible sur tout film non
   anglophone. `task: 'transcribe'` doit rester explicite, sinon Whisper peut traduire.
+- **Un motif de détection doit être testé sur ce qu'il ne doit PAS reconnaître.** Les tests
+  unitaires de la détection passaient tous : ils vérifiaient les correspondances voulues, jamais
+  l'absence des autres. `packages/phobias/src/regression.test.ts` couvre les pièges réels, avec
+  des répliques **paraphrasées** — le dépôt est public, on n'y recopie pas de sous-titres.
 - **Toute nouvelle couche du compagnon doit être couverte par `demo-chain.test.ts`**, qui teste la
   chaîne complète sans navigateur. Des couches testées séparément ne garantissent rien sur leur
   assemblage — c'est ce qui a coûté un test manuel entier.

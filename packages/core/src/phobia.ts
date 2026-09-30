@@ -6,12 +6,36 @@ export type ProtectionAction = 'white-noise' | 'blur' | 'blackout' | 'mute'
 /** Locales supportées par le site et les clients. */
 export type Locale = 'fr' | 'en'
 
-/** Indices tirés des sous-titres SDH (batch T1, §7.2). */
+/**
+ * Indices tirés des sous-titres (batch T1, §7.2).
+ *
+ * La distinction entre les deux premières listes est la leçon la plus coûteuse du
+ * projet : un dialogue qui **parle** d'un rat n'indique presque jamais qu'un rat
+ * soit à l'écran. Voir `docs/adr/0007`.
+ */
 export interface SubtitleHeuristics {
-  /** Mots-clés dans le dialogue. */
+  /**
+   * Mots-clés dans le dialogue → **mention** au niveau du titre.
+   *
+   * Ne produit aucune protection horodatée. Alimente les fiches SEO et la
+   * priorisation du batch.
+   */
   readonly keywords: readonly RegExp[]
-  /** Indications sonores entre crochets, p. ex. `[rats squeaking]`. */
+  /**
+   * Indications sonores SDH → **occurrence** horodatée.
+   *
+   * **Formes nominales seulement** : `couinements`, `squeaking`. Les formes
+   * conjuguées décrivent souvent une personne — `[couine avec enthousiasme]` est
+   * un humain, pas un rongeur — et produisent des faux positifs.
+   */
   readonly soundCues: readonly RegExp[]
+  /**
+   * Motifs qui **annulent** une correspondance.
+   *
+   * Indispensable pour les homographes : en français, « souris » est aussi une
+   * forme du verbe *sourire*. « Pourquoi tu souris ? » ne parle pas de rongeurs.
+   */
+  readonly excludes?: readonly RegExp[]
 }
 
 /** Classes AudioSet visées par la future détection audio côté client. */

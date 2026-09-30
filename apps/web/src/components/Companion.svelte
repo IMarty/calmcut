@@ -1,6 +1,11 @@
 <script lang="ts">
   import { asPhobiaId, asSegmentId, type Segment } from '@calmcut/core'
-  import { detectFromSubtitles, enabledPhobias } from '@calmcut/phobias'
+  import {
+    detectFromSubtitles,
+    enabledPhobias,
+    mentionsInSubtitles,
+    type PhobiaMention,
+  } from '@calmcut/phobias'
   import {
     createAnnouncer,
     createNoiseMask,
@@ -105,6 +110,22 @@
 
   /** Pour chaque scène préparée, les répliques qui l'ont déclenchée. */
   let sceneEvidence = $state<Map<string, number[]>>(new Map())
+
+  /**
+   * Phobies simplement **évoquées** par le dialogue.
+   *
+   * Affichées à part, et sans protection : un dialogue qui parle d'un rat
+   * n'indique presque jamais qu'un rat soit à l'écran. Les confondre produisait
+   * neuf faux positifs sur neuf lors du premier essai (ADR 0007).
+   */
+  let mentions = $state<PhobiaMention[]>([])
+
+  /** Scènes ajoutées à la main, pour tester quand les sous-titres ne disent rien. */
+  let manualScenes = $state<{ id: string; phobia: string; start: number; end: number }[]>([])
+  let manualTime = $state('')
+  let manualPhobia = $state<string>(enabledPhobias[0]?.id ?? 'rats')
+  let manualDuration = $state(10)
+  let manualIds = $state<Set<string>>(new Set())
   let chosen = $state<string[]>(enabledPhobias.map((p) => p.id))
   let volume = $state(0.6)
 
@@ -122,7 +143,7 @@
   let indexBuffer: ArrayBuffer | undefined
   let titleSalt = ''
 
-  const PHOBIA_EMOJI = new Map(enabledPhobias.map((p) => [p.id, p.emoji]))
+  const PHOBIA_EMOJI = new Map<string, string>(enabledPhobias.map((p) => [p.id, p.emoji]))
 
   /**
    * Prochaine scène après la position courante.
@@ -185,17 +206,70 @@
     recomputeScenes(cues)
   }
 
+  /** `01:12:30`, `72:30` ou `4350` → secondes. `undefined` si illisible. */
+  const parseTimecode = (input: string): number | undefined => {
+    const parts = input.trim().split(':')
+    if (parts.some((part) => part.trim() === '' || !/^\d+(?:[.,]\d+)?$/.test(part.trim()))) {
+      return undefined
+    }
+    const numbers = parts.map((part) => Number(part.trim().replace(',', '.')))
+    if (numbers.length === 1) return numbers[0]
+    if (numbers.length === 2) return (numbers[0] as number) * 60 + (numbers[1] as number)
+    if (numbers.length === 3) {
+      return (numbers[0] as number) * 3600 + (numbers[1] as number) * 60 + (numbers[2] as number)
+    }
+    return undefined
+  }
+
+  function addManualScene() {
+    const start = parseTimecode(manualTime)
+    if (start === undefined) {
+      statusMessage = 'Horaire illisible. Essaie 01:12:30, 72:30 ou 4350.'
+      return
+    }
+    manualScenes = [
+      ...manualScenes,
+      {
+        id: `manual-${manualScenes.length}`,
+        phobia: manualPhobia,
+        start,
+        end: start + Math.max(1, manualDuration),
+      },
+    ]
+    manualTime = ''
+    statusMessage = ''
+    recomputeScenes(loadedCues)
+  }
+
+  function removeManualScene(id: string) {
+    manualScenes = manualScenes.filter((scene) => scene.id !== id)
+    recomputeScenes(loadedCues)
+  }
+
   function recomputeScenes(cues: ReturnType<typeof parseSubtitles>) {
     const detected = detectFromSubtitles(cues, chosen)
-    const asSegments: Segment[] = detected.map((scene, i) => ({
-      id: asSegmentId(`demo-${i}`),
-      phobia: asPhobiaId(scene.phobia),
-      start: scene.start,
-      end: scene.end,
-      modality: 'subs',
-      status: 'confirmed',
-      score: scene.confidence,
-    }))
+    mentions = mentionsInSubtitles(cues, chosen)
+
+    const asSegments: Segment[] = [
+      ...detected.map((scene, i) => ({
+        id: asSegmentId(`demo-${i}`),
+        phobia: asPhobiaId(scene.phobia),
+        start: scene.start,
+        end: scene.end,
+        modality: 'subs' as const,
+        status: 'confirmed' as const,
+        score: scene.confidence,
+      })),
+      ...manualScenes.map((scene) => ({
+        id: asSegmentId(scene.id),
+        phobia: asPhobiaId(scene.phobia),
+        start: scene.start,
+        end: scene.end,
+        modality: 'user' as const,
+        status: 'confirmed' as const,
+        score: 1,
+      })),
+    ]
     // Les marges ont déjà été appliquées par la détection.
     const prepared = prepareSegments(asSegments, chosen, { marginBefore: 0, marginAfter: 0 })
 
@@ -209,6 +283,7 @@
         .flatMap((scene) => [...scene.cues])
       evidence.set(segment.id, [...new Set(indices)].sort((a, b) => a - b))
     }
+    manualIds = new Set(manualScenes.map((scene) => scene.id))
 
     scenes = prepared
     sceneEvidence = evidence
@@ -436,7 +511,10 @@
 
       {#if scenes.length > 0}
         <details class="scenes" open>
-          <summary>{scenes.length} {scenes.length === 1 ? 'scène repérée' : 'scènes repérées'}</summary>
+          <summary>
+            {scenes.length}
+            {scenes.length === 1 ? 'scène protégée' : 'scènes protégées'}
+          </summary>
           <!--
             Ces horaires sont calculés dans ce navigateur à partir du fichier de
             l'utilisateur. Rien ne vient de la base de CalmCut, donc rien à
@@ -449,7 +527,10 @@
                 <div class="head">
                   <span class="emoji">{PHOBIA_EMOJI.get(scene.phobia) ?? '⚠️'}</span>
                   <span class="range">{formatTime(scene.start)} → {formatTime(scene.end)}</span>
-                  <span class="hint">{formatDelay(scene.end - scene.start)}</span>
+                  <span class="hint">
+                    {formatDelay(scene.end - scene.start)}{#if manualIds.has(scene.id)} · ajoutée à
+                      la main{/if}
+                  </span>
                 </div>
                 <!--
                   Les répliques qui ont déclenché la détection, pour vérifier la
@@ -479,10 +560,86 @@
         </details>
       {:else}
         <p class="hint">
-          Aucune scène repérée dans ces sous-titres pour les phobies cochées. La synchronisation
-          se testera quand même, mais aucune protection ne se déclenchera.
+          Aucune indication sonore dans ces sous-titres pour les phobies cochées. C'est le cas le
+          plus fréquent : un fichier de sous-titres dit rarement <em>quand</em> une bête est à
+          l'écran. Ajoute une scène à la main ci-dessous pour tester la protection.
         </p>
       {/if}
+
+      {#if mentions.length > 0}
+        <details class="scenes">
+          <summary>
+            Le film en parle, sans qu'on sache quand
+            <span class="hint">({mentions.reduce((n, m) => n + m.count, 0)} répliques)</span>
+          </summary>
+          <p class="hint">
+            Ces répliques <strong>évoquent</strong> la phobie. Elles ne déclenchent
+            <strong>aucune protection</strong> : un dialogue qui parle d'un rat n'indique presque
+            jamais qu'un rat soit à l'écran. Les confondre, c'était la cause des faux positifs du
+            premier essai.
+          </p>
+          <ul class="evidence mentions">
+            {#each mentions as mention (mention.phobia)}
+              {#each mention.cues.slice(0, 8) as index (index)}
+                {@const cue = loadedCues[index]}
+                {#if cue !== undefined}
+                  <li>
+                    <span class="cue-time">{PHOBIA_EMOJI.get(mention.phobia) ?? '·'}
+                      {formatTime(cue.start)}</span>
+                    <span class="cue-text">{cue.text}</span>
+                  </li>
+                {/if}
+              {/each}
+              {#if mention.cues.length > 8}
+                <li><span class="cue-time">…</span><span class="hint"
+                    >et {mention.cues.length - 8} autres</span
+                  ></li>
+              {/if}
+            {/each}
+          </ul>
+        </details>
+      {/if}
+
+      <details class="scenes" open={scenes.length === 0}>
+        <summary>Ajouter une scène à la main</summary>
+        <p class="hint">
+          Pour tester la protection sur un moment que tu connais, ou quand les sous-titres ne
+          signalent rien.
+        </p>
+        <div class="manual">
+          <label>
+            <span class="hint">Horaire</span>
+            <input type="text" placeholder="01:12:30" bind:value={manualTime} size="9" />
+          </label>
+          <label>
+            <span class="hint">Phobie</span>
+            <select bind:value={manualPhobia}>
+              {#each enabledPhobias as phobia (phobia.id)}
+                <option value={phobia.id}>{phobia.emoji} {phobia.labels.fr}</option>
+              {/each}
+            </select>
+          </label>
+          <label>
+            <span class="hint">Durée (s)</span>
+            <input type="number" min="1" max="600" bind:value={manualDuration} size="4" />
+          </label>
+          <button onclick={addManualScene}>Ajouter</button>
+        </div>
+        {#if manualScenes.length > 0}
+          <ul class="evidence">
+            {#each manualScenes as scene (scene.id)}
+              <li>
+                <span class="cue-time">{PHOBIA_EMOJI.get(scene.phobia) ?? '·'}
+                  {formatTime(scene.start)}</span>
+                <span class="cue-text">
+                  jusqu'à {formatTime(scene.end)}
+                  <button class="link" onclick={() => removeManualScene(scene.id)}>retirer</button>
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </details>
 
       <fieldset class="field">
         <legend>Qualité de la reconnaissance vocale</legend>
@@ -864,6 +1021,42 @@
     grid-template-columns: auto 1fr;
     gap: 0.5rem;
     align-items: baseline;
+  }
+
+  .manual {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: end;
+    margin: 0.75rem 0;
+  }
+
+  .manual label {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .manual input {
+    padding: 0.5rem;
+    font: inherit;
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+  }
+
+  .mentions {
+    margin-left: 0;
+  }
+
+  .link {
+    padding: 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+    background: none;
+    border: none;
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .cue-time {
