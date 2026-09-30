@@ -51,10 +51,24 @@ choix d'un hachage (FNV-1a, encodage UTF-8 fait à la main) trivial à réimplé
 Flou dégressif et suivi des progrès, pensé pour accompagner une TCC. **Hors périmètre actuel** :
 seul le feature flag `exposure-mode` est prévu (M9). Tout le reste de CalmCut reste gratuit.
 
-### Audiodescription comme source T1
+### ⚠️ Re-séquencement en cours
 
-Piste ouverte par un constat de terrain : les sous-titres disent ce qui est **dit**,
-l'audiodescription dit ce qui est **montré**. Pour CalmCut, c'est la différence entre un
+Les tests de terrain ont invalidé l'hypothèse de §7.2 : les sous-titres ne peuplent pas la base.
+Voir [`detection-pipeline.md`](detection-pipeline.md), [`scene-alert-app.md`](scene-alert-app.md)
+et `adr/0008`.
+
+|                           | Avant             | Après                                 |
+| ------------------------- | ----------------- | ------------------------------------- |
+| Moteur de peuplement      | T1 sous-titres    | **scanner multimodal + signalements** |
+| `apps/scanner`            | phase 2           | **prioritaire**                       |
+| M5 site SEO, M6 extension | avant les données | **après**                             |
+| Nouvelle surface          | —                 | `apps/scene-alert` (mobile)           |
+
+### Audiodescription comme source T1 — écartée
+
+**Écartée** : aucun service ne sert ce texte à la demande pour des films commerciaux, et les
+corpus de recherche sont sous licence restreinte. Conservé ici pour mémoire — les sous-titres
+disent ce qui est **dit**, l'audiodescription dit ce qui est **montré**. Pour CalmCut, c'est la différence entre un
 signal inexploitable et un signal presque parfait — « un rat traverse la cuisine » est
 exactement ce qu'on cherche, avec son horaire.
 

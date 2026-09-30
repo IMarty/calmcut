@@ -213,6 +213,24 @@ le compagnon refuse une version inconnue et le batch doit les reconstruire.
 - Jamais de `--force` sur `main`. Jamais de secret en clair. Jamais d'action payante sans validation.
 - **Fin de session** : mettre à jour ce fichier (état d'avancement) et les tâches Akiflow.
 
+### Le peuplement de la base est le produit
+
+Tout le reste — synchro, compagnon, extension — existe pour qu'un signalement d'une personne
+protège les suivantes. Une synchro parfaite sur une base vide protège de zéro scène.
+
+Deux documents portent cette partie, et ils **remplacent l'hypothèse de §7.2** selon laquelle
+les sous-titres suffisent (ADR 0008) :
+
+- [`docs/detection-pipeline.md`](docs/detection-pipeline.md) — cinq modalités, fusion par
+  concordance, relecture locale, coûts
+- [`docs/scene-alert-app.md`](docs/scene-alert-app.md) — la surface mobile, dont la v1 capture
+  plus qu'elle ne protège
+
+**Règle d'exécution non négociable** : CalmCut n'analyse rien. Le scanner tourne chez la
+personne qui possède le fichier, la relecture et les vignettes restent locales, et seuls des
+horaires sont transmis. Envoyer des images ou du son sur nos serveurs — ou sur un GPU que nous
+louons — serait une transmission de contenu protégé à un tiers (principe 1).
+
 ### Actions humaines en attente
 
 [`docs/mise-en-route.md`](docs/mise-en-route.md) est le guide pas à pas d'Igor, dans l'ordre où
