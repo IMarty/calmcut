@@ -12,6 +12,12 @@
     },
     {
       "path": "./packages/player-actions"
+    },
+    {
+      "path": "./packages/db"
+    },
+    {
+      "path": "./tools/seed"
     }
   ]
 }

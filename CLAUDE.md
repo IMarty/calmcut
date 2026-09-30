@@ -54,13 +54,24 @@ scènes, index de synchro, capture micro en AudioWorklet, Whisper tiny (WebGPU, 
 > eu lieu, M2 n'est pas terminé — le code se construit et se teste, mais personne n'a encore vérifié
 > qu'il verrouille sur une vraie télévision.
 
-**Ce que M3 doit produire** — `packages/db` (schéma Drizzle, migrations D1), `workers/api` (Hono,
-toutes les routes de `docs/api.md`), auth d'appareil par Turnstile, quotas, `tools/seed`. Dépend des
-prérequis Cloudflare d'Igor.
+**Fait à M3** — `packages/db` (schéma Drizzle complet, migration D1 générée), `workers/api` (Hono,
+toutes les routes de `docs/api.md`), auth d'appareil par Turnstile + JWT, quota de titres distincts,
+ingestion idempotente, `tools/seed`. **89 tests d'intégration dans workerd**, avec un vrai D1 et un
+vrai R2 (Miniflare). 291 tests au total.
+
+> **⛔ Le déploiement preview de M3 attend Igor.** Il faut `CLOUDFLARE_ACCOUNT_ID`, un API token, et
+> les bases D1 créées — les `database_id` de `wrangler.jsonc` sont des placeholders. Tout le reste du
+> critère est atteint : `wrangler deploy --dry-run` valide la configuration des deux environnements
+> et le Worker pèse 68 Ko gzip.
+
+**Ce que M4 doit produire** — le dépôt public `calmcut-batch` : T0 (TMDB), T1 (OpenSubtitles →
+`parseSubtitles` → `detectFromSubtitles`), construction de l'index, `POST /v1/ingest`. Dépend des
+clés TMDB et OpenSubtitles d'Igor.
 
 **Décisions prises** (voir `docs/adr/`) : périmètre restreint du socle M0 (0001), publication de
 `@calmcut/phobias` sur npm (0002), dépôt public et filigrane séparé (0003), estimation du débit de
-lecture en plus du décalage (0004), choix audio du compagnon (0005).
+lecture en plus du décalage (0004), choix audio du compagnon (0005), table de quota par titre
+distinct (0006).
 
 ---
 
@@ -131,6 +142,7 @@ bun run test           # Vitest
 bun run test:watch
 bun run build          # build de chaque workspace
 bun run size           # budgets de poids (échoue si dépassement)
+bun run seed           # aperçu du jeu de données synthétique (--sql pour le SQL)
 bun run clean
 
 bun run changeset      # obligatoire dès qu'une PR touche core, sync ou phobias
@@ -146,15 +158,15 @@ Un workspace précis : `bun run --filter '@calmcut/sync' build`.
 apps/web          Astro + îlots Svelte : /watch/demo ✅ M2 ; site SEO et /watch/:slug (M5)
 apps/extension    WXT MV3 : Netflix, Disney+, Prime, YouTube                            (M6)
 apps/scanner      CLI d'analyse de médiathèque locale                                   (phase 2)
-workers/api       Hono : API publique, ingestion, auth d'appareil                       (M3)
+workers/api       Hono : API publique, ingestion, auth d'appareil                       ✅
 workers/cron      agrégation votes → statuts, republication R2                          (M7)
 packages/core     → npm @calmcut/core : types, format timeline, Detector                 ✅
 packages/sync     → npm @calmcut/sync : normalisation, index, lock (zéro dépendance)     ✅
 packages/phobias  → npm @calmcut/phobias : profils déclaratifs                            ✅
-packages/db       schéma Drizzle + migrations D1 (interne)                               (M3)
+packages/db       schéma Drizzle + migrations D1 (interne)                               ✅
 packages/watermark → déplacé dans le dépôt privé calmcut-watermark (ADR 0003)
 packages/player-actions bruit blanc, compte à rebours, ducking ✅ ; overlays (M6)
-tools/            seed, export  (leak-detect est dans calmcut-watermark)
+tools/            seed ✅, export (M9)  —  leak-detect est dans calmcut-watermark
 docs/             adr/, roadmap.md, cloudflare-manual.md, api.md
 ```
 
@@ -228,6 +240,18 @@ recommandation.
   tourner en navigateur, en Worker, sous Bun, et être portable sur la JVM.
 - **`ajv` est CJS** : sous `moduleResolution: nodenext`, l'import par défaut pointe sur l'espace de
   noms du module. Utiliser l'import nommé (`import { Ajv2020 } from 'ajv/dist/2020.js'`).
+- **Vitest est pinné en 4.x** : `@cloudflare/vitest-pool-workers` exige `vitest ^4.1`, et c'est lui
+  qui exécute les tests d'intégration **dans workerd**. Ne pas remonter sans vérifier le pool.
+- **La date de compatibilité des Workers est `2026-08-22`** : le binaire `workerd` livré avec
+  Miniflare refuse toute date plus récente. Elle apparaît dans `wrangler.jsonc` **et** dans
+  `workers/api/vitest.config.ts` — les deux doivent rester identiques.
+- **`cloudflare:test` se type via le namespace global `Cloudflare.Env`**, pas via `ProvidedEnv`
+  comme dans les versions antérieures du pool. Voir `workers/api/test/env.d.ts`.
+- **`isolatedStorage` du pool ne remet pas la base à zéro** entre deux tests : chaque test appelle
+  `resetDatabase()` et énonce ses propres préconditions.
+- **Ne jamais monter un `use('*')` dans une sous-application montée sur `/`** : son intergiciel
+  s'appliquerait à toutes les requêtes que personne ne résout, et ferait répondre 403 là où il faut
+  404 — ce qui apprendrait à un sondage anonyme quelles routes existent. Intergiciel par route.
 - **`apps/web` doit rester sur TypeScript 5.x** : `astro check` refuse TypeScript 7. Une copie
   imbriquée dans `apps/web/node_modules/typescript` peut masquer celle de la racine — la supprimer.
 - **Le micro exige un contexte sécurisé.** `localhost` convient pour tester, une IP de réseau local

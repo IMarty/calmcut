@@ -1,0 +1,28 @@
+{
+  "name": "@calmcut/seed",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "calmcut-seed": "./bin/seed.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@calmcut/core": "workspace:*",
+    "@calmcut/db": "workspace:*",
+    "@calmcut/phobias": "workspace:*",
+    "@calmcut/sync": "workspace:*",
+    "drizzle-orm": "^0.45.3"
+  }
+}

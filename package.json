@@ -26,19 +26,21 @@
     "changeset": "changeset",
     "version": "changeset version",
     "release": "changeset publish",
-    "size": "bun run --filter '@calmcut/web' size"
+    "size": "bun run --filter '@calmcut/web' size",
+    "seed": "bun run tools/seed/bin/seed.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
+    "@cloudflare/workers-types": "^5.20260930.2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.3",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/coverage-v8": "~4.1",
     "ajv": "^8.20.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.9",
     "typescript": "~5.9",
     "typescript-eslint": "^8.71.0",
-    "vitest": "^5.0.3"
+    "vitest": "~4.1"
   }
 }
