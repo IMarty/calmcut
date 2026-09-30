@@ -1,0 +1,100 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement cible
+        type: choice
+        options: [preview, production]
+        default: preview
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+# Le déploiement est désactivé tant que l'infrastructure Cloudflare n'existe pas (jalon M3).
+# Pour l'activer : créer la variable de dépôt DEPLOY_ENABLED = true, une fois les secrets
+# CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID en place (voir docs/cloudflare-manual.md).
+jobs:
+  deploy:
+    name: migrations D1 · Workers · site
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment || 'preview' }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CALMCUT_ENV: ${{ inputs.environment || 'preview' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      # Les migrations passent avant le déploiement : un Worker déployé contre un
+      # schéma qui n'a pas encore migré échouerait sur chaque requête.
+      - name: Migrations D1
+        run: bun run --filter '@calmcut/db' migrate:${{ env.CALMCUT_ENV }}
+
+      - name: Déployer l'API
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/api
+          command: deploy --env ${{ env.CALMCUT_ENV }}
+
+      - name: Déployer le cron
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/cron
+          command: deploy --env ${{ env.CALMCUT_ENV }}
+
+      - name: Déployer le site et le compagnon
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/web
+          command: deploy --env ${{ env.CALMCUT_ENV }}
+
+  extension:
+    name: artefact de l'extension
+    if: ${{ vars.EXTENSION_BUILD_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - run: bun install --frozen-lockfile
+
+      - name: Builder Chrome et Firefox
+        run: bun run --filter '@calmcut/extension' zip
+
+      # La publication sur les stores reste une action manuelle d'Igor :
+      # elle engage une identité d'éditeur et des délais de revue.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: calmcut-extension-${{ github.sha }}
+          path: apps/extension/.output/*.zip
+          if-no-files-found: error
+          retention-days: 30
