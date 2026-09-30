@@ -75,6 +75,17 @@ describe('mode démo — de bout en bout', () => {
     expect(scenes).toHaveLength(1)
     expect(scenes[0]?.evidence).toBe('sound-cue')
   })
+
+  it('désigne la réplique exacte qui a déclenché la scène', () => {
+    // C'est ce qui permet à l'utilisateur de vérifier la correspondance avec le
+    // film : la scène dit « à 02:00 », la réplique dit « [couinements] ».
+    const scenes = detectFromSubtitles(cues, ['rats'])
+    const indices = scenes[0]?.cues ?? []
+    expect(indices).toHaveLength(1)
+    const cue = cues[indices[0] as number]
+    expect(cue?.text).toBe('[couinements]')
+    expect(cue?.start).toBe(120)
+  })
 })
 
 describe('verrouillage avec la BONNE langue', () => {

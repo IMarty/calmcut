@@ -277,6 +277,10 @@ recommandation.
   les protections, puisque les scènes viennent du même fichier. Ne jamais « corriger » ce décalage
   en déplaçant la position : cela casserait un cas qui fonctionne. Le diagnostic distingue un
   décalage stable (bénin) d'une dérive (vrai problème).
+- **`detectFromSubtitles` renvoie des indices de répliques, jamais leur texte.** Ce paquet est lu
+  par `calmcut-batch`, où le texte des sous-titres doit être jeté après traitement (principe 1) :
+  le faire remonter dans le type de retour y mettrait un piège permanent. L'appelant qui possède
+  les répliques les retrouve par indice.
 - **Un horodatage renvoyé par Whisper doit tomber dans l'audio fourni** (`sanitizeChunks`). Whisper
   complète ses fenêtres de 30 s par du silence et peut y placer du texte : accepter un tel
   horodatage décale l'ancre de plusieurs dizaines de secondes.

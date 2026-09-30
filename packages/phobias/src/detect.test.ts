@@ -117,6 +117,48 @@ describe('marges et fusion', () => {
   })
 })
 
+describe('indices des répliques déclenchantes', () => {
+  it('désigne la réplique qui a déclenché la détection', () => {
+    const scenes = detectFromSubtitles(
+      [cue('Bonjour', 10), cue('[rats squeaking]', 100), cue('Au revoir', 500)],
+      ['rats'],
+      NO_MERGE,
+    )
+    expect(scenes[0]?.cues).toEqual([1])
+  })
+
+  it('accumule les indices des répliques fusionnées', () => {
+    const scenes = detectFromSubtitles(
+      [cue('[rats]', 100, 102), cue('[squeaking]', 105, 107), cue('[scurrying]', 110, 112)],
+      ['rats'],
+    )
+    expect(scenes).toHaveLength(1)
+    expect(scenes[0]?.cues).toEqual([0, 1, 2])
+  })
+
+  it('ne renvoie AUCUN texte — seulement des indices', () => {
+    const scenes = detectFromSubtitles([cue('[rats squeaking]', 100)], ['rats'], NO_MERGE)
+    // Ce paquet est lu par calmcut-batch, où le texte des sous-titres doit être
+    // jeté après traitement (principe 1). Le faire remonter ici y mettrait un
+    // piège permanent : le type de retour ne doit contenir aucune chaîne issue
+    // des sous-titres.
+    const serialized = JSON.stringify(scenes)
+    expect(serialized).not.toContain('squeaking')
+    expect(serialized).not.toContain('rats squeaking')
+  })
+
+  it('garde des indices valides dans le tableau fourni', () => {
+    const cues = [cue('[rats]', 100), cue('Bonjour', 200), cue('[souris]', 300)]
+    const scenes = detectFromSubtitles(cues, ['rats'])
+    for (const scene of scenes) {
+      for (const index of scene.cues) {
+        expect(index).toBeGreaterThanOrEqual(0)
+        expect(index).toBeLessThan(cues.length)
+      }
+    }
+  })
+})
+
 describe('sélection des phobies', () => {
   it('ne cherche que les phobies demandées', () => {
     const cues = [cue('[rats squeaking]', 100), cue('[spider skittering]', 300)]

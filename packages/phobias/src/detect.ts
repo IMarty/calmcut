@@ -33,6 +33,18 @@ export interface DetectedScene {
   readonly confidence: number
   /** Ce qui a déclenché la détection. */
   readonly evidence: 'sound-cue' | 'keyword'
+  /**
+   * Indices, dans le tableau fourni, des répliques qui ont déclenché la détection.
+   *
+   * **Des indices, et non le texte.** Ce paquet est consommé par `calmcut-batch`,
+   * où le texte des sous-titres doit être jeté après traitement (principe 1) :
+   * le faire remonter ici y mettrait un piège permanent. L'appelant qui possède
+   * déjà les répliques peut les retrouver ; celui qui ne les a plus n'obtient que
+   * des nombres.
+   *
+   * Une scène issue de plusieurs répliques fusionnées en porte plusieurs.
+   */
+  readonly cues: readonly number[]
 }
 
 export interface DetectOptions {
@@ -59,7 +71,11 @@ const BRACKETED = /\[([^\]]*)\]|\(([^)]*)\)/g
 
 const DEFAULTS = { margin: 2, mergeWithin: 8 }
 
-const scan = (cue: DetectableCue, profile: PhobiaProfile): DetectedScene | undefined => {
+const scan = (
+  cue: DetectableCue,
+  profile: PhobiaProfile,
+  cueIndex: number,
+): DetectedScene | undefined => {
   // Les indications sonores ne comptent que dans les crochets : « squeak » dans
   // une réplique parlée n'est pas un bruit de rat.
   const bracketed = [...cue.text.matchAll(BRACKETED)]
@@ -73,6 +89,7 @@ const scan = (cue: DetectableCue, profile: PhobiaProfile): DetectedScene | undef
       end: cue.end,
       confidence: SOUND_CUE_CONFIDENCE,
       evidence: 'sound-cue',
+      cues: [cueIndex],
     }
   }
 
@@ -84,6 +101,7 @@ const scan = (cue: DetectableCue, profile: PhobiaProfile): DetectedScene | undef
       end: cue.end,
       confidence: SOUND_CUE_CONFIDENCE,
       evidence: 'sound-cue',
+      cues: [cueIndex],
     }
   }
 
@@ -94,6 +112,7 @@ const scan = (cue: DetectableCue, profile: PhobiaProfile): DetectedScene | undef
       end: cue.end,
       confidence: KEYWORD_CONFIDENCE,
       evidence: 'keyword',
+      cues: [cueIndex],
     }
   }
 
@@ -122,12 +141,12 @@ export const detectFromSubtitles = (
   if (profiles.length === 0) return []
 
   const found: DetectedScene[] = []
-  for (const cue of cues) {
+  cues.forEach((cue, cueIndex) => {
     for (const profile of profiles) {
-      const scene = scan(cue, profile)
+      const scene = scan(cue, profile, cueIndex)
       if (scene !== undefined) found.push(scene)
     }
-  }
+  })
 
   found.sort((a, b) => a.start - b.start || a.end - b.end)
 
@@ -153,6 +172,7 @@ export const detectFromSubtitles = (
         // jamais atteindre 1 — seule la foule peut confirmer.
         confidence: Math.min(0.95, last.confidence + widened.confidence * 0.3),
         evidence: last.evidence === 'sound-cue' ? 'sound-cue' : widened.evidence,
+        cues: [...last.cues, ...widened.cues],
       }
       continue
     }

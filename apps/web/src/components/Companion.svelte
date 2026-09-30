@@ -93,6 +93,18 @@
     return Math.max(...values) - Math.min(...values)
   })
   let scenes = $state<ActiveSegment[]>([])
+
+  /**
+   * Répliques du fichier chargé, conservées en mémoire pour l'affichage.
+   *
+   * Elles ne sont **ni stockées ni transmises** : elles vivent le temps de la
+   * session, dans cet onglet, comme le fichier que l'utilisateur vient d'ouvrir
+   * (principe 1). Rien ne va en `localStorage`, rien ne part sur le réseau.
+   */
+  let loadedCues = $state<{ text: string; start: number; end: number }[]>([])
+
+  /** Pour chaque scène préparée, les répliques qui l'ont déclenchée. */
+  let sceneEvidence = $state<Map<string, number[]>>(new Map())
   let chosen = $state<string[]>(enabledPhobias.map((p) => p.id))
   let volume = $state(0.6)
 
@@ -156,6 +168,7 @@
 
     fileName = file.name
     cueCount = cues.length
+    loadedCues = cues
     // Le sel dérive du nom du fichier : en mode démo il n'y a pas de titleId, et
     // deux films différents ne doivent pas partager d'espace de hachage.
     titleSalt = `demo:${file.name}:${cues.length}`
@@ -184,7 +197,21 @@
       score: scene.confidence,
     }))
     // Les marges ont déjà été appliquées par la détection.
-    scenes = prepareSegments(asSegments, chosen, { marginBefore: 0, marginAfter: 0 })
+    const prepared = prepareSegments(asSegments, chosen, { marginBefore: 0, marginAfter: 0 })
+
+    // `prepareSegments` fusionne les segments qui se chevauchent et ne garde
+    // qu'un identifiant : on reconstitue les répliques par intersection de plages
+    // plutôt que de dépendre de sa politique de fusion.
+    const evidence = new Map<string, number[]>()
+    for (const segment of prepared) {
+      const indices = detected
+        .filter((scene) => scene.start < segment.end && scene.end > segment.start)
+        .flatMap((scene) => [...scene.cues])
+      evidence.set(segment.id, [...new Set(indices)].sort((a, b) => a - b))
+    }
+
+    scenes = prepared
+    sceneEvidence = evidence
     runner?.setSegments(scenes)
   }
 
@@ -419,15 +446,35 @@
           <ol>
             {#each scenes as scene (scene.id)}
               <li>
-                <span class="emoji">{PHOBIA_EMOJI.get(scene.phobia) ?? '⚠️'}</span>
-                <span class="range">{formatTime(scene.start)} → {formatTime(scene.end)}</span>
-                <span class="hint">{formatDelay(scene.end - scene.start)}</span>
+                <div class="head">
+                  <span class="emoji">{PHOBIA_EMOJI.get(scene.phobia) ?? '⚠️'}</span>
+                  <span class="range">{formatTime(scene.start)} → {formatTime(scene.end)}</span>
+                  <span class="hint">{formatDelay(scene.end - scene.start)}</span>
+                </div>
+                <!--
+                  Les répliques qui ont déclenché la détection, pour vérifier la
+                  correspondance avec le film. Elles viennent du fichier de
+                  l'utilisateur et restent dans cet onglet : rien n'est stocké,
+                  rien n'est transmis (principe 1).
+                -->
+                <ul class="evidence">
+                  {#each sceneEvidence.get(scene.id) ?? [] as index (index)}
+                    {@const cue = loadedCues[index]}
+                    {#if cue !== undefined}
+                      <li>
+                        <span class="cue-time">{formatTime(cue.start)}</span>
+                        <span class="cue-text">{cue.text}</span>
+                      </li>
+                    {/if}
+                  {/each}
+                </ul>
               </li>
             {/each}
           </ol>
           <p class="hint">
-            Marges de sécurité comprises. Pour tester vite, avance le film juste avant l'une
-            d'elles.
+            Horaires marges comprises. Sous chaque scène, <strong>les répliques du fichier qui
+            l'ont déclenchée</strong> — de quoi vérifier que le sous-titre correspond bien à ce
+            qu'on voit à l'écran. Pour tester vite, avance le film juste avant l'une d'elles.
           </p>
         </details>
       {:else}
@@ -787,11 +834,47 @@
     gap: 0.375rem;
   }
 
-  .scenes li {
+  .scenes > ol > li {
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .scenes > ol > li:first-child {
+    border-top: none;
+  }
+
+  .head {
     display: grid;
     grid-template-columns: 1.5rem auto 1fr;
     gap: 0.5rem;
     align-items: baseline;
+  }
+
+  .evidence {
+    margin: 0.375rem 0 0 2rem;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.1875rem;
+    font-size: 0.875rem;
+  }
+
+  .evidence li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+
+  .cue-time {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cue-text {
+    /* Une réplique peut être longue : on la laisse respirer plutôt que la tronquer,
+       c'est justement le texte qu'on veut comparer au film. */
+    overflow-wrap: anywhere;
   }
 
   .range {

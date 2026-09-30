@@ -124,10 +124,20 @@ Ouvre **<http://localhost:4321/watch/demo>**
 
 ### Protocole
 
-1. **Charge le `.srt`** avec le sélecteur de fichier. Une liste dépliée affiche **les horaires
-   de chaque scène repérée** (`01:12:11 → 01:12:20`, avec l'emoji de la phobie et la durée).
-   **Sers-t'en pour aller vite** : avance le film juste avant l'une d'elles plutôt que
-   d'attendre.
+1. **Charge le `.srt`** avec le sélecteur de fichier. Une liste dépliée affiche **les horaires de
+   chaque scène repérée** (`01:12:11 → 01:12:20`, emoji de la phobie, durée) et, sous chacune,
+   **les répliques du fichier qui l'ont déclenchée** :
+
+   ```
+   🐀  01:12:09 → 01:12:22   13 s
+       01:12:11  [couinements]
+       01:12:18  Il y a quelque chose dans le mur.
+   ```
+
+   C'est de quoi **vérifier la correspondance** : si la réplique affichée ne correspond pas à ce
+   que dit le film à cet instant, ton `.srt` n'est pas celui de cette version. Sers-t'en aussi
+   pour aller vite : avance le film juste avant une scène plutôt que d'attendre.
+
 2. **VÉRIFIE LA LANGUE.** Un menu « Langue parlée dans le film » apparaît sous le nom du
    fichier, prérempli d'après les sous-titres. **C'est le réglage le plus important de tout le
    compagnon** : une mauvaise langue rend la synchronisation _impossible_, parce que la

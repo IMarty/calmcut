@@ -58,6 +58,14 @@ inutilement la vie de quelqu'un qui veut se préparer à ce qui arrive.
 La distinction est à tenir quand `/watch/:slug` sera branché sur l'API à M5 : **ce mode-là ne doit
 pas afficher les bornes**, seulement les alertes.
 
+Le mode démo affiche aussi **les répliques du `.srt` qui ont déclenché chaque scène**, pour que
+l'utilisateur vérifie la correspondance avec le film. Même raisonnement : c'est son fichier, dans
+son onglet. Les répliques ne vont **ni en `localStorage` ni sur le réseau**.
+
+`detectFromSubtitles` renvoie pour cela des **indices** de répliques, jamais leur texte :
+`@calmcut/phobias` est consommé par `calmcut-batch`, où le texte doit être jeté après traitement.
+Faire remonter du texte dans ce type y mettrait un piège permanent — un test le vérifie.
+
 `output: 'static'` : l'adaptateur `@astrojs/cloudflare` et le rendu serveur arrivent à M5, avec les
 fiches film.
 
