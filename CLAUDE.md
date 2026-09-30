@@ -12,12 +12,13 @@ doc ; anglais pour les identifiants.
 
 ## État d'avancement
 
-| Jalon  | Objet                                                   | État       |
-| ------ | ------------------------------------------------------- | ---------- |
-| **M0** | Socle : monorepo, qualité, CI, docs, licences           | ✅ terminé |
-| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | ✅ terminé |
-| **M2** | POC compagnon en mode démo (`.srt` local + micro)       | ⏭️ suivant |
-| M3→M9  | Voir `docs/roadmap.md`                                  | à faire    |
+| Jalon  | Objet                                                   | État           |
+| ------ | ------------------------------------------------------- | -------------- |
+| **M0** | Socle : monorepo, qualité, CI, docs, licences           | ✅ terminé     |
+| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | ✅ terminé     |
+| **M2** | POC compagnon en mode démo (`.srt` local + micro)       | 🟡 test manuel |
+| **M3** | D1 + Drizzle + API Hono + infra Cloudflare preview      | ⏭️ suivant     |
+| M4→M9  | Voir `docs/roadmap.md`                                  | à faire        |
 
 **Fait à M0** — monorepo Bun (3 workspaces), TypeScript strict avec project references, ESLint +
 Prettier + Vitest, CI GitHub (format, lint, typecheck, tests, build, scan de secrets), Changesets,
@@ -43,14 +44,23 @@ saut, perte de verrou). `@calmcut/core` expose son JSON Schema. 119 tests.
 Validé sur timelines synthétiques : décalage constant, échelle 25/23,976, pause courte, pause
 longue, double coupure publicitaire, transcription dégradée à 15 % et 30 % d'erreurs de mots.
 
-**Ce que M2 doit produire** — le POC du compagnon en mode démo : squelette Astro, un îlot Svelte sur
-`/watch`, Whisper tiny en WebGPU dans un Web Worker, capture micro en AudioWorklet, chargement d'un
-`.srt` local, et `packages/player-actions` (bruit blanc, compte à rebours). C'est le jalon qui dit si
-le produit est viable : la synchro doit se verrouiller en moins de 30 s dans un vrai salon.
+**Fait à M2** — `apps/web` avec `/watch/demo` : chargement d'un `.srt`/`.vtt` local, détection des
+scènes, index de synchro, capture micro en AudioWorklet, Whisper tiny (WebGPU, repli WASM) et
+`SyncTracker` dans un Web Worker, compte à rebours vocal et bruit blanc. Nouveau paquet
+`@calmcut/player-actions`. 202 tests. Budgets tenus et vérifiés en CI : shell à 23 Ko gzip sur 50.
+
+> **⏳ M2 attend une validation humaine.** Son critère d'acceptation est un test dans un vrai salon,
+> que je ne peux pas exécuter. Tâche Akiflow créée pour Igor, avec un protocole. Tant qu'il n'a pas
+> eu lieu, M2 n'est pas terminé — le code se construit et se teste, mais personne n'a encore vérifié
+> qu'il verrouille sur une vraie télévision.
+
+**Ce que M3 doit produire** — `packages/db` (schéma Drizzle, migrations D1), `workers/api` (Hono,
+toutes les routes de `docs/api.md`), auth d'appareil par Turnstile, quotas, `tools/seed`. Dépend des
+prérequis Cloudflare d'Igor.
 
 **Décisions prises** (voir `docs/adr/`) : périmètre restreint du socle M0 (0001), publication de
 `@calmcut/phobias` sur npm (0002), dépôt public et filigrane séparé (0003), estimation du débit de
-lecture en plus du décalage (0004).
+lecture en plus du décalage (0004), choix audio du compagnon (0005).
 
 ---
 
@@ -120,6 +130,7 @@ bun run typecheck      # tsc --build sur tous les projets référencés
 bun run test           # Vitest
 bun run test:watch
 bun run build          # build de chaque workspace
+bun run size           # budgets de poids (échoue si dépassement)
 bun run clean
 
 bun run changeset      # obligatoire dès qu'une PR touche core, sync ou phobias
@@ -132,7 +143,7 @@ Un workspace précis : `bun run --filter '@calmcut/sync' build`.
 ## Structure
 
 ```
-apps/web          Astro : site SEO + compagnon PWA /watch/:slug + modération /admin/*   (M5)
+apps/web          Astro + îlots Svelte : /watch/demo ✅ M2 ; site SEO et /watch/:slug (M5)
 apps/extension    WXT MV3 : Netflix, Disney+, Prime, YouTube                            (M6)
 apps/scanner      CLI d'analyse de médiathèque locale                                   (phase 2)
 workers/api       Hono : API publique, ingestion, auth d'appareil                       (M3)
@@ -142,7 +153,7 @@ packages/sync     → npm @calmcut/sync : normalisation, index, lock (zéro dép
 packages/phobias  → npm @calmcut/phobias : profils déclaratifs                            ✅
 packages/db       schéma Drizzle + migrations D1 (interne)                               (M3)
 packages/watermark → déplacé dans le dépôt privé calmcut-watermark (ADR 0003)
-packages/player-actions bruit blanc, compte à rebours, overlays, ducking                 (M2/M6)
+packages/player-actions bruit blanc, compte à rebours, ducking ✅ ; overlays (M6)
 tools/            seed, export  (leak-detect est dans calmcut-watermark)
 docs/             adr/, roadmap.md, cloudflare-manual.md, api.md
 ```
@@ -217,6 +228,10 @@ recommandation.
   tourner en navigateur, en Worker, sous Bun, et être portable sur la JVM.
 - **`ajv` est CJS** : sous `moduleResolution: nodenext`, l'import par défaut pointe sur l'espace de
   noms du module. Utiliser l'import nommé (`import { Ajv2020 } from 'ajv/dist/2020.js'`).
+- **`apps/web` doit rester sur TypeScript 5.x** : `astro check` refuse TypeScript 7. Une copie
+  imbriquée dans `apps/web/node_modules/typescript` peut masquer celle de la racine — la supprimer.
+- **Le micro exige un contexte sécurisé.** `localhost` convient pour tester, une IP de réseau local
+  non : il faut HTTPS pour essayer depuis un téléphone.
 - **Les workflows `deploy` et `release` sont éteints par défaut**, derrière les variables de dépôt
   `DEPLOY_ENABLED`, `RELEASE_ENABLED` et `EXTENSION_BUILD_ENABLED`. C'est volontaire : on ne déploie
   pas contre une infrastructure qui n'existe pas. Voir `docs/cloudflare-manual.md`.

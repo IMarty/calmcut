@@ -11,10 +11,16 @@ export default defineConfig({
       '@calmcut/core': src('core'),
       '@calmcut/sync': src('sync'),
       '@calmcut/phobias': src('phobias'),
+      '@calmcut/player-actions': src('player-actions'),
     },
   },
   test: {
-    include: ['tests/**/*.test.ts', 'packages/*/src/**/*.test.ts', 'workers/*/src/**/*.test.ts'],
+    include: [
+      'tests/**/*.test.ts',
+      'packages/*/src/**/*.test.ts',
+      'apps/*/src/**/*.test.ts',
+      'workers/*/src/**/*.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

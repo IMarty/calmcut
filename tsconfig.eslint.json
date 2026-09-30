@@ -17,6 +17,6 @@
       "@calmcut/phobias": ["./packages/phobias/src/index.ts"]
     }
   },
-  "include": ["**/*.ts", "**/*.js"],
+  "include": ["**/*.ts", "**/*.js", "**/*.mjs"],
   "exclude": ["node_modules", "**/node_modules/**", "**/dist/**", "**/.wrangler/**", "**/.wxt/**"]
 }

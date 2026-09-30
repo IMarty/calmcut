@@ -13,7 +13,7 @@
     "tools/*"
   ],
   "scripts": {
-    "ci": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
+    "ci": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build && bun run size",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -25,7 +25,8 @@
     "clean": "rm -rf node_modules **/node_modules **/dist **/*.tsbuildinfo",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "size": "bun run --filter '@calmcut/web' size"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
