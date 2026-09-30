@@ -272,6 +272,17 @@ recommandation.
   imbriquée dans `apps/web/node_modules/typescript` peut masquer celle de la racine — la supprimer.
 - **Le micro exige un contexte sécurisé.** `localhost` convient pour tester, une IP de réseau local
   non : il faut HTTPS pour essayer depuis un téléphone.
+- **La position affichée par le compagnon est celle de la timeline des sous-titres**, pas celle du
+  lecteur. Un `.srt` calé sur une autre version du film décale le chiffre affiché **sans** décaler
+  les protections, puisque les scènes viennent du même fichier. Ne jamais « corriger » ce décalage
+  en déplaçant la position : cela casserait un cas qui fonctionne. Le diagnostic distingue un
+  décalage stable (bénin) d'une dérive (vrai problème).
+- **Un horodatage renvoyé par Whisper doit tomber dans l'audio fourni** (`sanitizeChunks`). Whisper
+  complète ses fenêtres de 30 s par du silence et peut y placer du texte : accepter un tel
+  horodatage décale l'ancre de plusieurs dizaines de secondes.
+- **L'estimation du débit exige 5 ancres sur 180 s et une erreur type faible.** Une pente calculée
+  sur peu d'ancres décrit le bruit, pas le film. Tant que les conditions ne sont pas réunies, le
+  débit reste à 1 — le comportement de §7.3, donc jamais pire.
 - **La langue de Whisper est obligatoire et typée comme telle.** Ne jamais la rendre optionnelle :
   sans elle, Whisper transcrit en anglais et le verrouillage est impossible sur tout film non
   anglophone. `task: 'transcribe'` doit rester explicite, sinon Whisper peut traduire.

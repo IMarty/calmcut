@@ -62,6 +62,36 @@
     | undefined
   >(undefined)
   let heardCount = $state(0)
+
+  /**
+   * Historique des offsets mesurés, pour distinguer deux causes de décalage.
+   *
+   * Un offset **stable** signifie que le suivi fonctionne : si la position
+   * affichée ne correspond pas au minuteur du lecteur, c'est que le fichier de
+   * sous-titres est décalé par rapport à cette version du film — et les
+   * protections tombent quand même au bon moment, puisqu'elles viennent du même
+   * fichier.
+   *
+   * Un offset qui **dérive** signale un vrai problème de suivi : là, les
+   * protections seraient décalées elles aussi.
+   */
+  let offsetHistory = $state<{ at: number; offset: number }[]>([])
+
+  const offsetDrift = $derived.by(() => {
+    if (offsetHistory.length < 3) return undefined
+    const first = offsetHistory[0]
+    const last = offsetHistory[offsetHistory.length - 1]
+    if (first === undefined || last === undefined) return undefined
+    const elapsed = last.at - first.at
+    if (elapsed < 30) return undefined
+    return ((last.offset - first.offset) / elapsed) * 60
+  })
+
+  const offsetSpread = $derived.by(() => {
+    if (offsetHistory.length < 2) return undefined
+    const values = offsetHistory.map((h) => h.offset)
+    return Math.max(...values) - Math.min(...values)
+  })
   let scenes = $state<ActiveSegment[]>([])
   let chosen = $state<string[]>(enabledPhobias.map((p) => p.id))
   let volume = $state(0.6)
@@ -236,6 +266,12 @@
         return
       case 'heard':
         heardCount += 1
+        if (message.bestOffset !== undefined && message.support >= 3) {
+          const at = capture?.now() ?? 0
+          // On ne garde que douze mesures : assez pour voir une dérive, assez peu
+          // pour que l'ancien ne masque pas le récent.
+          offsetHistory = [...offsetHistory, { at, offset: message.bestOffset }].slice(-12)
+        }
         lastHeard = {
           transcript: message.transcript,
           segments: message.segments,
@@ -321,6 +357,7 @@
     protection = { kind: 'idle' }
     lastHeard = undefined
     heardCount = 0
+    offsetHistory = []
     stage = 'setup'
   }
 
@@ -443,6 +480,10 @@
         <p class="position">{formatTime(mediaTime)}</p>
         <p class="hint">
           Synchronisé{#if held} — position maintenue{/if}
+          <br />
+          Position dans la timeline des <strong>sous-titres</strong>. Elle peut différer du
+          minuteur de ton lecteur si le fichier ne correspond pas exactement à cette version du
+          film — sans que cela décale les protections.
         </p>
       {:else}
         <p class="position">À l'écoute…</p>
@@ -508,7 +549,30 @@
           </dd>
           <dt>Index du titre</dt>
           <dd>{indexSize} trigrammes</dd>
+          {#if lastHeard.bestOffset !== undefined}
+            <dt>Décalage mesuré</dt>
+            <dd>{lastHeard.bestOffset > 0 ? '+' : ''}{lastHeard.bestOffset.toFixed(1)} s</dd>
+          {/if}
+          <dt>Vitesse de lecture mesurée</dt>
+          <dd>{(syncStatus?.rate ?? 1).toFixed(4)}×</dd>
         </dl>
+
+        {#if offsetDrift !== undefined}
+          <p class="verdict" class:bad={Math.abs(offsetDrift) > 0.5}>
+            {#if Math.abs(offsetDrift) > 0.5}
+              ⚠️ <strong>Le décalage dérive de {offsetDrift > 0 ? '+' : ''}{offsetDrift.toFixed(1)}
+              s par minute.</strong> C'est un vrai problème de suivi : les protections seront
+              décalées elles aussi. Dis-le-moi avec ce chiffre.
+            {:else}
+              ✓ <strong>Le décalage est stable</strong>
+              {#if offsetSpread !== undefined}(±{offsetSpread.toFixed(1)} s sur {offsetHistory.length}
+                mesures){/if}. Le suivi fonctionne. Si la position affichée ne correspond pas au
+              minuteur de ton lecteur, c'est que le fichier de sous-titres est décalé par rapport à
+              cette version du film — <strong>les protections tombent quand même au bon
+              moment</strong>, puisqu'elles viennent du même fichier.
+            {/if}
+          </p>
+        {/if}
         <p class="transcript">
           <span class="hint">Dernière transcription — reste sur cet appareil :</span><br />
           {lastHeard.transcript === '' ? '(rien entendu)' : lastHeard.transcript}
@@ -745,6 +809,19 @@
     border-radius: 0.5rem;
     background: var(--surface);
     font-size: 0.9375rem;
+  }
+
+  .verdict {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--surface);
+    line-height: 1.5;
+  }
+
+  .verdict.bad {
+    background: var(--warn-bg);
+    color: var(--warn-fg);
   }
 
   .transcript {

@@ -1,4 +1,5 @@
 import type { HeardSegment } from '@calmcut/sync'
+import { SAMPLE_RATE } from './windower.js'
 
 /**
  * Transcription de l'audio en segments horodatés.
@@ -23,9 +24,41 @@ export interface Transcriber {
 }
 
 /** Un segment brut tel que Transformers.js le renvoie. */
-interface WhisperChunk {
+export interface WhisperChunk {
   readonly text?: unknown
   readonly timestamp?: readonly unknown[]
+}
+
+/** Tolérance sur les horodatages, en secondes : Whisper les arrondit au 1/50ᵉ. */
+const TIMESTAMP_SLACK = 0.25
+
+/**
+ * Filtre les segments renvoyés par Whisper.
+ *
+ * **Un horodatage doit tomber dans l'audio fourni.** Whisper travaille sur des
+ * fenêtres de 30 secondes et complète par du silence ce qu'on ne lui donne pas ;
+ * il lui arrive alors de placer du texte dans ce silence, à 20 ou 25 secondes,
+ * pour une fenêtre qui n'en contient que 8. Accepter un tel horodatage décale
+ * l'ancre de la même quantité, et la position estimée devient fausse de plusieurs
+ * dizaines de secondes.
+ *
+ * Un segment hors bornes est **rejeté**, pas ramené dans l'intervalle : on ne sait
+ * pas où il devrait être, et inventer une position serait pire que de perdre
+ * quelques trigrammes.
+ */
+export const sanitizeChunks = (
+  chunks: readonly WhisperChunk[],
+  durationSeconds: number,
+): HeardSegment[] => {
+  const segments: HeardSegment[] = []
+  for (const chunk of chunks) {
+    const text = typeof chunk.text === 'string' ? chunk.text : ''
+    const start = chunk.timestamp?.[0]
+    if (text.trim() === '' || typeof start !== 'number' || !Number.isFinite(start)) continue
+    if (start < -TIMESTAMP_SLACK || start > durationSeconds + TIMESTAMP_SLACK) continue
+    segments.push({ text, start: Math.max(0, Math.min(durationSeconds, start)) })
+  }
+  return segments
 }
 
 export interface WhisperOptions {
@@ -103,14 +136,8 @@ export const createWhisperTranscriber = (options: WhisperOptions): Transcriber =
         language: options.language,
       })
 
-      const chunks = result.chunks ?? []
-      const segments: HeardSegment[] = []
-      for (const chunk of chunks) {
-        const text = typeof chunk.text === 'string' ? chunk.text : ''
-        const start = chunk.timestamp?.[0]
-        if (text.trim() === '' || typeof start !== 'number') continue
-        segments.push({ text, start })
-      }
+      const durationSeconds = pcm.length / SAMPLE_RATE
+      const segments = sanitizeChunks(result.chunks ?? [], durationSeconds)
 
       // Certains modèles ne renvoient pas de découpage : mieux vaut un segment
       // unique daté au début de la fenêtre que rien du tout.

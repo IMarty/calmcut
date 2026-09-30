@@ -182,6 +182,28 @@ Et surtout : **tout ce qui t'a paru désagréable, effrayant ou pénible.** Un c
 trop brusque, un bruit blanc trop fort, une voix qui surprend — c'est au moins aussi important
 que les chiffres. On construit un outil pour des gens déjà en alerte.
 
+### Si la position affichée ne correspond pas à ton lecteur
+
+**C'est probablement normal, et sans conséquence sur la protection.**
+
+La position affichée est celle de la **timeline des sous-titres**, pas celle du minuteur de ton
+lecteur. Si ton `.srt` a été calé sur une autre version du film — un logo de distributeur en
+plus ou en moins, très courant — les deux diffèrent d'autant.
+
+Or les scènes viennent **du même fichier**. Donc elles sont décalées de la même quantité, et
+**les protections tombent quand même au bon moment réel**. Seul le chiffre affiché est trompeur.
+
+Le panneau Diagnostic tranche tout seul :
+
+| Ce qu'il affiche                               | Conclusion                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| « ✓ Le décalage est stable (±0,3 s) »          | le suivi va bien, ton `.srt` est simplement décalé — **les protections sont bonnes** |
+| « ⚠️ Le décalage dérive de +2,1 s par minute » | **vrai problème de suivi** — les protections seront décalées, envoie-moi ce chiffre  |
+
+**La question qui compte** n'est donc pas « l'heure affichée est-elle juste ? » mais
+**« le compte à rebours arrive-t-il avant la scène ? »**. Utilise la liste des horaires pour
+avancer juste avant une scène et vérifier ça directement.
+
 ### Si ça ne verrouille toujours pas
 
 Le panneau de diagnostic répond à la question à ma place. Dans l'ordre de probabilité :

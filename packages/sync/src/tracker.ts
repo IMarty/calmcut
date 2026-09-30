@@ -20,11 +20,26 @@ export interface TrackerOptions extends EstimateOptions {
   readonly maxJump?: number
   /** Échecs consécutifs tolérés avant de lâcher le verrou. Défaut : 3. */
   readonly maxConsecutiveFailures?: number
-  /** Profondeur de l'historique servant à estimer le débit, en secondes. Défaut : 240. */
+  /** Profondeur de l'historique servant à estimer le débit, en secondes. Défaut : 600. */
   readonly rateWindow?: number
-  /** Écart temporel minimal entre ancres avant d'oser estimer un débit. Défaut : 45 s. */
+  /** Écart temporel minimal entre ancres avant d'oser estimer un débit. Défaut : 180 s. */
   readonly minRateSpan?: number
-  /** Bornes du débit estimé. Défaut : [0,9 ; 1,11], qui couvre les transferts 23,976 ↔ 25. */
+  /** Nombre d'ancres minimal avant d'oser estimer un débit. Défaut : 5. */
+  readonly minRateAnchors?: number
+  /**
+   * Erreur type maximale tolérée sur la pente. Défaut : 0,003.
+   *
+   * C'est le garde-fou qui compte : une pente peut être parfaitement calculée et
+   * néanmoins ne rien signifier si les ancres sont bruitées sur une courte durée.
+   */
+  readonly maxRateStdError?: number
+  /**
+   * Bornes du débit estimé. Défaut : [0,94 ; 1,06].
+   *
+   * Les seuls écarts réels viennent des conversions de cadence : 25/23,976 = 1,0427,
+   * son inverse 0,959, et 30/29,97 = 1,001. Tout ce qui sort de cet intervalle est
+   * une erreur d'estimation, pas un film.
+   */
   readonly rateBounds?: readonly [number, number]
 }
 
@@ -53,9 +68,11 @@ const DEFAULTS = {
   resyncInterval: 30,
   maxJump: 3,
   maxConsecutiveFailures: 3,
-  rateWindow: 240,
-  minRateSpan: 45,
-  rateBounds: [0.9, 1.11] as readonly [number, number],
+  rateWindow: 600,
+  minRateSpan: 180,
+  minRateAnchors: 5,
+  maxRateStdError: 0.003,
+  rateBounds: [0.94, 1.06] as readonly [number, number],
 }
 
 /**
@@ -90,6 +107,8 @@ export class SyncTracker {
       maxConsecutiveFailures: options.maxConsecutiveFailures ?? DEFAULTS.maxConsecutiveFailures,
       rateWindow: options.rateWindow ?? DEFAULTS.rateWindow,
       minRateSpan: options.minRateSpan ?? DEFAULTS.minRateSpan,
+      minRateAnchors: options.minRateAnchors ?? DEFAULTS.minRateAnchors,
+      maxRateStdError: options.maxRateStdError ?? DEFAULTS.maxRateStdError,
       rateBounds: options.rateBounds ?? DEFAULTS.rateBounds,
       tolerance: options.tolerance ?? DEFAULT_TOLERANCE,
     }
@@ -206,15 +225,27 @@ export class SyncTracker {
     this.#anchors = kept.length > 0 ? kept : this.#anchors.slice(-1)
   }
 
-  /** Moindres carrés sur les ancres récentes : la pente est le débit de lecture. */
+  /**
+   * Moindres carrés sur les ancres récentes : la pente est le débit de lecture.
+   *
+   * **Une pente n'est adoptée que si elle est mesurée, pas devinée.** Les ancres
+   * portent un bruit de segmentation de quelques dixièmes de seconde ; sur une
+   * courte durée, la pente que ce bruit produit est indiscernable d'un vrai écart
+   * de cadence. L'adopter fait dériver la position de plusieurs dizaines de
+   * secondes — et une position fausse décale toutes les protections.
+   *
+   * D'où trois conditions cumulatives : assez d'ancres, une durée assez longue,
+   * et une **erreur type** sur la pente assez faible. Tant qu'elles ne sont pas
+   * réunies, le débit reste à 1, ce qui est le comportement de §7.3 — donc jamais
+   * pire que ce que le cahier des charges demande.
+   */
   #estimateRate(): number {
     const anchors = this.#anchors
-    if (anchors.length < 3) return this.#rate
+    if (anchors.length < this.#options.minRateAnchors) return this.#rate
 
     const first = anchors[0] as Anchor
     const last = anchors[anchors.length - 1] as Anchor
-    const span = last.local - first.local
-    if (span < this.#options.minRateSpan) return this.#rate
+    if (last.local - first.local < this.#options.minRateSpan) return this.#rate
 
     const n = anchors.length
     let sumX = 0
@@ -226,16 +257,34 @@ export class SyncTracker {
     const meanX = sumX / n
     const meanY = sumY / n
 
-    let num = 0
-    let den = 0
+    let sxy = 0
+    let sxx = 0
     for (const a of anchors) {
       const dx = a.local - meanX
-      num += dx * (a.canonical - meanY)
-      den += dx * dx
+      sxy += dx * (a.canonical - meanY)
+      sxx += dx * dx
     }
-    if (den === 0) return this.#rate
+    if (sxx === 0) return this.#rate
+
+    const slope = sxy / sxx
+    const intercept = meanY - slope * meanX
+
+    // Erreur type de la pente : sans elle, on ne sait pas si la pente décrit les
+    // ancres ou le bruit qu'elles portent.
+    let sumSquaredResiduals = 0
+    for (const a of anchors) {
+      const residual = a.canonical - (intercept + slope * a.local)
+      sumSquaredResiduals += residual * residual
+    }
+    const variance = sumSquaredResiduals / (n - 2)
+    const standardError = Math.sqrt(variance / sxx)
+    if (!Number.isFinite(standardError) || standardError > this.#options.maxRateStdError) {
+      return this.#rate
+    }
 
     const [min, max] = this.#options.rateBounds
-    return Math.min(max, Math.max(min, num / den))
+    // Hors de ces bornes, ce n'est pas un film : c'est une erreur d'estimation.
+    if (slope < min || slope > max) return this.#rate
+    return slope
   }
 }
