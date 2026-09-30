@@ -8,7 +8,7 @@ là où c'est indiqué, et tu me dis juste « c'est fait ».
 
 | Étape                                                                        | Durée  | Ce que ça débloque                    | Coût                          |
 | ---------------------------------------------------------------------------- | ------ | ------------------------------------- | ----------------------------- |
-| [1. Fusionner les 4 PR](#étape-1--fusionner-les-4-pr)                        | 5 min  | le dépôt repart d'une base propre     | —                             |
+| [1. Fusionner la PR #5](#étape-1--fusionner-la-pr-5)                         | 2 min  | **remet M1, M2 et M3 sur `main`**     | —                             |
 | [2. Supprimer 2 dépôts parasites](#étape-2--supprimer-deux-dépôts-parasites) | 2 min  | hygiène                               | —                             |
 | [3. Tester le POC](#étape-3--tester-le-poc-le-plus-important)                | 30 min | **valide M2, décide de la viabilité** | —                             |
 | [4. Cloudflare](#étape-4--cloudflare)                                        | 20 min | **termine M3**                        | gratuit                       |
@@ -22,28 +22,35 @@ fonctionne. Tout le reste peut attendre.
 
 ---
 
-## Étape 1 — Fusionner les 4 PR
+## Étape 1 — Fusionner la PR #5
 
-Elles sont empilées : chacune a la précédente pour base. **L'ordre compte.** Une fois #1
-fusionnée, GitHub recible automatiquement #2 sur `main`, et ainsi de suite.
+**Ce qui s'est passé avec les quatre premières :** elles étaient empilées, tu les as fusionnées en
+cinquante secondes, et GitHub ne recible une PR sur `main` qu'**après** la suppression de sa
+branche de base. Il n'en a pas eu le temps : #2 est allée dans `m0/socle`, #3 dans `m1/sync-lock`,
+#4 dans `m2/companion-poc`. Ces branches ont été supprimées, et seul **M0** est arrivé sur `main`.
 
-Je ne peux pas les fusionner moi-même : un garde-fou de mon côté m'interdit de fusionner sans
-relecture humaine.
+Rien n'était perdu, et ce n'est pas ta faute : empiler quatre PR sans t'avertir de ce délai était
+une erreur de ma part. **[La PR #5](https://github.com/IMarty/calmcut/pull/5) remet tout sur
+`main`**, et elle est seule — donc sans piège.
 
-1. Ouvre **<https://github.com/IMarty/calmcut/pull/1>**
-2. Descends jusqu'au bandeau vert en bas de la page
-3. Clique sur la **flèche à droite** du bouton vert → choisis **« Squash and merge »**
-4. Clique **« Squash and merge »**, puis **« Confirm squash and merge »**
-5. Clique **« Delete branch »** (le bouton apparaît juste après)
-6. Recommence pour **#2**, puis **#3**, puis **#4** — dans cet ordre
+1. Ouvre **<https://github.com/IMarty/calmcut/pull/5>**
+2. Bandeau vert en bas → flèche à droite du bouton → **« Squash and merge »**
+3. **« Confirm squash and merge »**, puis **« Delete branch »**
 
-> Si un bouton est grisé avec « Waiting for status checks », attends une minute : la CI finit
-> de tourner. Si elle échoue, ne fusionne pas et dis-le-moi.
+Vérifie ensuite que ces quatre fichiers existent bien sur
+**<https://github.com/IMarty/calmcut>** :
 
-Ce que tu vérifies à la fin : sur <https://github.com/IMarty/calmcut>, la page d'accueil du
-dépôt montre `apps/`, `packages/`, `workers/`, `tools/`, `docs/`.
+```
+packages/sync/src/tracker.ts
+apps/web/src/components/Companion.svelte
+workers/api/src/app.ts
+packages/db/src/schema.ts
+```
 
-- [ ] Les 4 PR sont fusionnées
+> **Pour la suite :** je n'empilerai plus de PR. Une par jalon, fusionnée avant que j'ouvre la
+> suivante.
+
+- [ ] PR #5 fusionnée, les quatre fichiers sont là
 
 ---
 
