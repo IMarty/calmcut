@@ -19,3 +19,4 @@ export const isEnabledPhobia = (id: string): boolean => byId.get(id)?.enabled ==
 /** Filtre une liste d'identifiants reçus d'un client vers les seules phobies activées. */
 export const resolveEnabledPhobias = (ids: readonly string[]): readonly PhobiaId[] =>
   ids.filter(isEnabledPhobia).map((id) => byId.get(id)?.id as PhobiaId)
+export * from './detect.js'

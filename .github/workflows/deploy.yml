@@ -18,12 +18,17 @@ concurrency:
 permissions:
   contents: read
 
-# Le déploiement est désactivé tant que l'infrastructure Cloudflare n'existe pas (jalon M3).
-# Pour l'activer : créer la variable de dépôt DEPLOY_ENABLED = true, une fois les secrets
-# CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID en place (voir docs/cloudflare-manual.md).
+# Le déploiement est désactivé tant que l'infrastructure Cloudflare n'existe pas.
+# Pour l'activer : créer la variable de dépôt DEPLOY_ENABLED = true, une fois les
+# secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID en place et les bases D1
+# créées. Voir docs/mise-en-route.md, étape 4.
+#
+# Ce workflow ne déploie QUE ce qui existe. Les étapes du site (M5) et du cron (M7)
+# seront ajoutées par les PR de leurs jalons respectifs : les écrire à l'avance
+# ferait échouer le premier déploiement sur des dossiers sans configuration wrangler.
 jobs:
   deploy:
-    name: migrations D1 · Workers · site
+    name: migrations D1 · API
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -57,21 +62,12 @@ jobs:
           workingDirectory: workers/api
           command: deploy --env ${{ env.CALMCUT_ENV }}
 
-      - name: Déployer le cron
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: workers/cron
-          command: deploy --env ${{ env.CALMCUT_ENV }}
-
-      - name: Déployer le site et le compagnon
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/web
-          command: deploy --env ${{ env.CALMCUT_ENV }}
+      - name: Vérifier que l'API répond
+        run: |
+          # Un déploiement qui réussit mais dont le Worker ne démarre pas n'est pas
+          # un déploiement réussi.
+          test -n "${{ vars.API_HEALTH_URL }}" || { echo "API_HEALTH_URL non définie, vérification sautée"; exit 0; }
+          curl --fail --silent --show-error --max-time 20 "${{ vars.API_HEALTH_URL }}" | tee /dev/stderr | grep -q '"ok":true'
 
   extension:
     name: artefact de l'extension

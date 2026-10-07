@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://calmcut.org/schema/title-document/v1.json",
+  "title": "CalmCut — document public d'un titre",
+  "description": "Format servi par GET /v1/titles/:id. Ne contient que des horaires, des étiquettes et des identifiants : jamais de contenu protégé.",
+  "type": "object",
+  "required": ["v", "title", "sources", "segments"],
+  "additionalProperties": false,
+  "properties": {
+    "v": {
+      "description": "Version du format. Un client refuse une version qu'il ne connaît pas.",
+      "const": 1
+    },
+    "title": { "$ref": "#/$defs/titleHeader" },
+    "sources": {
+      "description": "Correspondances entre les timelines des plateformes et la timeline canonique.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "segments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/segment" }
+    },
+    "sync": { "$ref": "#/$defs/syncPointer" }
+  },
+  "$defs": {
+    "titleHeader": {
+      "type": "object",
+      "required": ["slug", "name", "year", "runtime"],
+      "description": "En-tête public. `creditsStart` et `creditsEnd` sont internes et ne doivent jamais apparaître ici : `additionalProperties: false` le garantit.",
+      "additionalProperties": false,
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "year": { "type": "integer", "minimum": 1870, "maximum": 2200 },
+        "runtime": {
+          "description": "Durée canonique, en secondes.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["kind", "externalId", "offset", "scale"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["netflix", "disney", "prime", "youtube", "file", "canonical"]
+        },
+        "externalId": { "type": "string", "minLength": 1 },
+        "offset": {
+          "description": "Secondes. canonique = local × scale + offset.",
+          "type": "number"
+        },
+        "scale": {
+          "description": "1 par défaut ; 25/23,976 pour un transfert PAL.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "required": ["id", "phobia", "start", "end", "modality", "status", "score"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "phobia": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "start": {
+          "description": "Secondes sur la timeline canonique, marges de sécurité comprises.",
+          "type": "number",
+          "minimum": 0
+        },
+        "end": { "type": "number", "minimum": 0 },
+        "modality": {
+          "description": "Comment le segment a été détecté.",
+          "type": "string",
+          "enum": ["meta", "subs", "audio", "video", "user"]
+        },
+        "status": {
+          "description": "Tous les états sauf `disabled` sont appliqués par le client : un faux négatif est grave, un faux positif est bénin.",
+          "type": "string",
+          "enum": ["pending", "confirmed", "verified", "disputed", "disabled"]
+        },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "origin": { "type": "string", "enum": ["batch", "ai-client", "user"] },
+        "bbox": { "$ref": "#/$defs/bbox" }
+      }
+    },
+    "bbox": {
+      "description": "Boîte englobante normalisée, pour un futur floutage ciblé.",
+      "type": "object",
+      "required": ["x", "y", "w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 1 },
+        "y": { "type": "number", "minimum": 0, "maximum": 1 },
+        "w": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "h": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "syncPointer": {
+      "type": "object",
+      "required": ["version", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "description": "SYNC_INDEX_VERSION de l'index pointé.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "url": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

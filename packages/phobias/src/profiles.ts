@@ -1,6 +1,37 @@
 import { asPhobiaId, type PhobiaProfile } from '@calmcut/core'
 
 /**
+ * Profils de phobies, déclaratifs.
+ *
+ * Trois règles tirées d'un premier essai sur un vrai film, qui avait produit neuf
+ * détections et neuf faux positifs :
+ *
+ * 1. **Les frontières de mot sont explicites et Unicode.** `\b` en JavaScript est
+ *    défini sur l'ASCII : toute lettre accentuée compte comme une frontière, donc
+ *    `/\brat\b/` reconnaît « raté ». Le helper `word()` évite ce piège.
+ * 2. **Les indications sonores sont nominales.** `couinements`, jamais `couine` :
+ *    une forme conjuguée décrit souvent une personne. `[couine avec enthousiasme]`
+ *    est un humain.
+ * 3. **Les homographes sont exclus explicitement.** « Souris » est aussi une forme
+ *    du verbe *sourire*.
+ *
+ * Voir `docs/adr/0007-mention-nest-pas-occurrence.md`.
+ */
+
+/**
+ * Motif de mot entier, avec des frontières Unicode.
+ *
+ * `(?<!\p{L})` plutôt que `\b` : c'est la seule façon d'exiger une vraie frontière
+ * de mot dans une langue accentuée.
+ */
+const word = (...alternatives: string[]): RegExp =>
+  new RegExp(`(?<![\\p{L}\\p{N}_])(?:${alternatives.join('|')})(?![\\p{L}\\p{N}_])`, 'iu')
+
+/** Motif libre, sans contrainte de frontière — pour les racines de bruits. */
+const loose = (...alternatives: string[]): RegExp =>
+  new RegExp(`(?:${alternatives.join('|')})`, 'iu')
+
+/**
  * Profils actifs. On démarre volontairement avec deux phobies pour valider la
  * chaîne complète (batch → API → clients) avant d'élargir le catalogue.
  */
@@ -12,10 +43,19 @@ export const rats: PhobiaProfile = {
   enabled: true,
   subtitles: {
     keywords: [
-      /\b(rats?|mice|mouse|rodents?|vermin)\b/i,
-      /\b(rats?|souris|rongeurs?|mulots?|vermine)\b/i,
+      word('rats?', 'mice', 'mouse', 'rodents?', 'vermin'),
+      word('rats?', 'souris', 'mulots?', 'rongeurs?', 'vermine'),
     ],
-    soundCues: [/squeak/i, /scurry|scratching|scuttl/i, /couine|grattement|trottine/i],
+    // Formes NOMINALES : c'est ainsi que le sous-titrage SDH écrit un bruit.
+    soundCues: [
+      loose('squeaking', 'squeaks', 'scurrying', 'scratching', 'gnawing', 'scuttling'),
+      loose('couinements?', 'grattements?', 'trottinements?', 'grignotements?'),
+    ],
+    excludes: [
+      // « souris » = forme du verbe *sourire*. « Pourquoi tu souris ? »
+      /(?<![\p{L}])(?:je|tu|on|nous|vous)\s+souris(?![\p{L}])/iu,
+      /souri(?:re|res|ant|ante)(?![\p{L}])/iu,
+    ],
   },
   audio: { audioSetClasses: ['Rodents, rats, mice'] },
   visual: { prompts: ['rat', 'mouse (animal)', 'rodent'] },
@@ -31,10 +71,10 @@ export const spiders: PhobiaProfile = {
   enabled: true,
   subtitles: {
     keywords: [
-      /\b(spiders?|tarantulas?|arachnids?|cobwebs?|webs?)\b/i,
-      /\b(araign[ée]es?|tarentules?|arachnides?|toiles?)\b/i,
+      word('spiders?', 'tarantulas?', 'arachnids?', 'cobwebs?'),
+      word('araign[ée]es?', 'tarentules?', 'arachnides?'),
     ],
-    soundCues: [/skitter|chitter/i, /grouillement|cliquetis/i],
+    soundCues: [loose('skittering', 'chittering'), loose('grouillements?', 'cliquetis')],
   },
   audio: { audioSetClasses: ['Insect'] },
   visual: { prompts: ['spider', 'tarantula', 'spider web'] },
@@ -56,10 +96,10 @@ export const snakes: PhobiaProfile = {
   enabled: false,
   subtitles: {
     keywords: [
-      /\b(snakes?|serpents?|cobras?|pythons?|vipers?|adders?)\b/i,
-      /\b(serpents?|vip[èe]res?|couleuvres?|boas?)\b/i,
+      word('snakes?', 'cobras?', 'pythons?', 'vipers?', 'adders?'),
+      word('serpents?', 'vip[èe]res?', 'couleuvres?', 'boas?'),
     ],
-    soundCues: [/hiss/i, /siffle/i],
+    soundCues: [loose('hissing'), loose('sifflements?')],
   },
   audio: { audioSetClasses: ['Hiss'] },
   visual: { prompts: ['snake', 'cobra', 'python (snake)'] },
@@ -75,10 +115,29 @@ export const insects: PhobiaProfile = {
   enabled: false,
   subtitles: {
     keywords: [
-      /\b(insects?|cockroach(es)?|roach(es)?|beetles?|maggots?|larvae|wasps?|hornets?)\b/i,
-      /\b(insectes?|cafards?|blattes?|cancrelats?|scarab[ée]es?|asticots?|larves?|gu[êe]pes?|frelons?)\b/i,
+      word(
+        'insects?',
+        'cockroach(?:es)?',
+        'roach(?:es)?',
+        'beetles?',
+        'maggots?',
+        'larvae',
+        'wasps?',
+        'hornets?',
+      ),
+      word(
+        'insectes?',
+        'cafards?',
+        'blattes?',
+        'cancrelats?',
+        'scarab[ée]es?',
+        'asticots?',
+        'larves?',
+        'gu[êe]pes?',
+        'frelons?',
+      ),
     ],
-    soundCues: [/buzz|swarm|crawl/i, /bourdonne|grouille/i],
+    soundCues: [loose('buzzing', 'swarming'), loose('bourdonnements?', 'grouillements?')],
   },
   audio: { audioSetClasses: ['Insect', 'Buzz'] },
   visual: { prompts: ['cockroach', 'beetle', 'swarm of insects'] },
@@ -94,8 +153,8 @@ export const needles: PhobiaProfile = {
   enabled: false,
   subtitles: {
     keywords: [
-      /\b(needles?|syringes?|injections?|inject(ing|ed)?|iv drip|vaccines?|blood draw)\b/i,
-      /\b(aiguilles?|seringues?|piq[ûu]res?|injections?|perfusions?|prise de sang|vaccins?)\b/i,
+      word('needles?', 'syringes?', 'injections?', 'vaccines?'),
+      word('aiguilles?', 'seringues?', 'piq[ûu]res?', 'injections?', 'perfusions?', 'vaccins?'),
     ],
     soundCues: [],
   },
@@ -111,8 +170,11 @@ export const clowns: PhobiaProfile = {
   labels: { fr: 'Clowns', en: 'Clowns' },
   enabled: false,
   subtitles: {
-    keywords: [/\b(clowns?|jesters?|harlequins?)\b/i, /\b(clowns?|bouffons?|arlequins?)\b/i],
-    soundCues: [/circus music/i, /musique de cirque/i],
+    keywords: [
+      word('clowns?', 'jesters?', 'harlequins?'),
+      word('clowns?', 'bouffons?', 'arlequins?'),
+    ],
+    soundCues: [loose('circus music'), loose('musique de cirque')],
   },
   visual: { prompts: ['clown', 'clown face', 'circus performer'] },
   defaultAction: 'blackout',
@@ -127,8 +189,8 @@ export const blood: PhobiaProfile = {
   enabled: false,
   subtitles: {
     keywords: [
-      /\b(blood|bleeding|haemorrhag|hemorrhag|gore|wounds?|amputat)/i,
-      /\b(sang|saigne|h[ée]morragie|blessures?|amputat|plaies?)/i,
+      word('blood', 'bleeding', 'h(?:a)?emorrhage', 'gore', 'wounds?'),
+      word('sang', 'h[ée]morragie', 'blessures?', 'plaies?'),
     ],
     soundCues: [],
   },
@@ -145,10 +207,13 @@ export const emetophobia: PhobiaProfile = {
   enabled: false,
   subtitles: {
     keywords: [
-      /\b(vomit|throw(ing)? up|puke|retch|nausea|sick to (my|his|her) stomach)/i,
-      /\b(vomi|vomit|d[ée]gobille|naus[ée]e|mal au c[oœ]ur|hauts? le c[oœ]ur)/i,
+      word('vomit', 'vomiting', 'puke', 'retching', 'nausea'),
+      word('vomi', 'vomissements?', 'naus[ée]es?'),
     ],
-    soundCues: [/retching|gagging|vomiting/i, /haut le c[oœ]ur|vomissement/i],
+    soundCues: [
+      loose('retching', 'gagging', 'vomiting'),
+      loose('haut[- ]le[- ]c[oœ]ur', 'vomissements?'),
+    ],
   },
   audio: { audioSetClasses: ['Vomit'] },
   visual: { prompts: ['person vomiting'] },

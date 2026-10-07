@@ -12,11 +12,13 @@ doc ; anglais pour les identifiants.
 
 ## État d'avancement
 
-| Jalon  | Objet                                                   | État       |
-| ------ | ------------------------------------------------------- | ---------- |
-| **M0** | Socle : monorepo, qualité, CI, docs, licences           | ✅ terminé |
-| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | ⏭️ suivant |
-| M2→M9  | Voir `docs/roadmap.md`                                  | à faire    |
+| Jalon  | Objet                                                   | État              |
+| ------ | ------------------------------------------------------- | ----------------- |
+| **M0** | Socle : monorepo, qualité, CI, docs, licences           | ✅ terminé        |
+| **M1** | `core`, `sync`, `phobias` complets — algorithme de lock | ✅ terminé        |
+| **M2** | POC compagnon en mode démo (`.srt` local + micro)       | 🟡 2ᵉ test manuel |
+| **M3** | D1 + Drizzle + API Hono + infra Cloudflare preview      | ⏭️ suivant        |
+| M4→M9  | Voir `docs/roadmap.md`                                  | à faire           |
 
 **Fait à M0** — monorepo Bun (3 workspaces), TypeScript strict avec project references, ESLint +
 Prettier + Vitest, CI GitHub (format, lint, typecheck, tests, build, scan de secrets), Changesets,
@@ -34,13 +36,49 @@ sans `dist`) **et sur GitHub**.
 > l'historique public. Voir `docs/adr/0003`. Règle à tenir : ce dépôt peut dire qu'un filigrane
 > existe, jamais comment il est calibré.
 
-**Ce que M1 doit produire** — dans `packages/sync` : construction de l'index binaire, histogramme
-d'offsets, algorithme de verrouillage (§7.3 du cahier des charges), validé sur des timelines
-synthétiques (décalage, échelle 25/23,976, pauses, coupures publicitaires). La normalisation, les
-trigrammes et le hachage sont déjà faits et testés.
+**Fait à M1** — `@calmcut/sync` porte la chaîne complète : format binaire `CCSY` (construction,
+lecture dichotomique, refus d'une version inconnue), `hearSegments` + `estimateOffset` (histogramme
+d'offsets), et `SyncTracker` (machine à états écoute → verrouillage → horloge locale, détection de
+saut, perte de verrou). `@calmcut/core` expose son JSON Schema. 119 tests.
+
+Validé sur timelines synthétiques : décalage constant, échelle 25/23,976, pause courte, pause
+longue, double coupure publicitaire, transcription dégradée à 15 % et 30 % d'erreurs de mots.
+
+**Fait à M2** — `apps/web` avec `/watch/demo` : chargement d'un `.srt`/`.vtt` local, détection des
+scènes, index de synchro, capture micro en AudioWorklet, Whisper tiny (WebGPU, repli WASM) et
+`SyncTracker` dans un Web Worker, compte à rebours vocal et bruit blanc. Nouveau paquet
+`@calmcut/player-actions`. 202 tests. Budgets tenus et vérifiés en CI : shell à 23 Ko gzip sur 50.
+
+> **⏳ M2 attend un second test humain.** Le premier a échoué : la langue n'était **jamais**
+> transmise à Whisper, qui transcrivait donc en anglais un film français. Aucun trigramme ne pouvait
+> concorder — le verrouillage était impossible par construction, et l'interface restait muette.
+>
+> Corrigé : `language` est obligatoire dans les types (le compilateur refuse de l'omettre), déduite
+> des sous-titres, corrigeable dans l'interface, et `task: 'transcribe'` est explicite pour que
+> Whisper ne traduise pas. Un panneau de diagnostic rend désormais l'échec lisible, et
+> `demo-chain.test.ts` teste la chaîne complète dans les deux sens.
+>
+> **Leçon retenue** : il manquait un test de la chaîne de bout en bout. Trois couches testées
+> séparément ne garantissent rien sur leur assemblage.
+
+**Fait à M3** — `packages/db` (schéma Drizzle complet, migration D1 générée), `workers/api` (Hono,
+toutes les routes de `docs/api.md`), auth d'appareil par Turnstile + JWT, quota de titres distincts,
+ingestion idempotente, `tools/seed`. **89 tests d'intégration dans workerd**, avec un vrai D1 et un
+vrai R2 (Miniflare). 291 tests au total.
+
+> **⛔ Le déploiement preview de M3 attend Igor.** Il faut `CLOUDFLARE_ACCOUNT_ID`, un API token, et
+> les bases D1 créées — les `database_id` de `wrangler.jsonc` sont des placeholders. Tout le reste du
+> critère est atteint : `wrangler deploy --dry-run` valide la configuration des deux environnements
+> et le Worker pèse 68 Ko gzip.
+
+**Ce que M4 doit produire** — le dépôt public `calmcut-batch` : T0 (TMDB), T1 (OpenSubtitles →
+`parseSubtitles` → `detectFromSubtitles`), construction de l'index, `POST /v1/ingest`. Dépend des
+clés TMDB et OpenSubtitles d'Igor.
 
 **Décisions prises** (voir `docs/adr/`) : périmètre restreint du socle M0 (0001), publication de
-`@calmcut/phobias` sur npm (0002), dépôt public et filigrane séparé (0003).
+`@calmcut/phobias` sur npm (0002), dépôt public et filigrane séparé (0003), estimation du débit de
+lecture en plus du décalage (0004), choix audio du compagnon (0005), table de quota par titre
+distinct (0006).
 
 ---
 
@@ -110,7 +148,11 @@ bun run typecheck      # tsc --build sur tous les projets référencés
 bun run test           # Vitest
 bun run test:watch
 bun run build          # build de chaque workspace
-bun run clean
+bun run size           # budgets de poids (échoue si dépassement)
+bun run seed           # aperçu du jeu de données synthétique (--sql pour le SQL)
+bun run ci:clean       # CI depuis un état sans dist — À FAIRE AVANT TOUTE PR
+bun run clean:build    # supprime dist, .astro et les tsbuildinfo
+bun run clean          # idem + node_modules
 
 bun run changeset      # obligatoire dès qu'une PR touche core, sync ou phobias
 ```
@@ -122,18 +164,18 @@ Un workspace précis : `bun run --filter '@calmcut/sync' build`.
 ## Structure
 
 ```
-apps/web          Astro : site SEO + compagnon PWA /watch/:slug + modération /admin/*   (M5)
+apps/web          Astro + îlots Svelte : /watch/demo ✅ M2 ; site SEO et /watch/:slug (M5)
 apps/extension    WXT MV3 : Netflix, Disney+, Prime, YouTube                            (M6)
 apps/scanner      CLI d'analyse de médiathèque locale                                   (phase 2)
-workers/api       Hono : API publique, ingestion, auth d'appareil                       (M3)
+workers/api       Hono : API publique, ingestion, auth d'appareil                       ✅
 workers/cron      agrégation votes → statuts, republication R2                          (M7)
 packages/core     → npm @calmcut/core : types, format timeline, Detector                 ✅
-packages/sync     → npm @calmcut/sync : normalisation, index, lock (zéro dépendance)     ✅ partiel
+packages/sync     → npm @calmcut/sync : normalisation, index, lock (zéro dépendance)     ✅
 packages/phobias  → npm @calmcut/phobias : profils déclaratifs                            ✅
-packages/db       schéma Drizzle + migrations D1 (interne)                               (M3)
+packages/db       schéma Drizzle + migrations D1 (interne)                               ✅
 packages/watermark → déplacé dans le dépôt privé calmcut-watermark (ADR 0003)
-packages/player-actions bruit blanc, compte à rebours, overlays, ducking                 (M2/M6)
-tools/            seed, export  (leak-detect est dans calmcut-watermark)
+packages/player-actions bruit blanc, compte à rebours, ducking ✅ ; overlays (M6)
+tools/            seed ✅, export (M9)  —  leak-detect est dans calmcut-watermark
 docs/             adr/, roadmap.md, cloudflare-manual.md, api.md
 ```
 
@@ -171,6 +213,31 @@ le compagnon refuse une version inconnue et le batch doit les reconstruire.
 - Jamais de `--force` sur `main`. Jamais de secret en clair. Jamais d'action payante sans validation.
 - **Fin de session** : mettre à jour ce fichier (état d'avancement) et les tâches Akiflow.
 
+### Le peuplement de la base est le produit
+
+Tout le reste — synchro, compagnon, extension — existe pour qu'un signalement d'une personne
+protège les suivantes. Une synchro parfaite sur une base vide protège de zéro scène.
+
+Deux documents portent cette partie, et ils **remplacent l'hypothèse de §7.2** selon laquelle
+les sous-titres suffisent (ADR 0008) :
+
+- [`docs/detection-pipeline.md`](docs/detection-pipeline.md) — cinq modalités, fusion par
+  concordance, relecture locale, coûts
+- [`docs/scene-alert-app.md`](docs/scene-alert-app.md) — la surface mobile, dont la v1 capture
+  plus qu'elle ne protège
+
+**Règle d'exécution non négociable** : CalmCut n'analyse rien. Le scanner tourne chez la
+personne qui possède le fichier, la relecture et les vignettes restent locales, et seuls des
+horaires sont transmis. Envoyer des images ou du son sur nos serveurs — ou sur un GPU que nous
+louons — serait une transmission de contenu protégé à un tiers (principe 1).
+
+### Actions humaines en attente
+
+[`docs/mise-en-route.md`](docs/mise-en-route.md) est le guide pas à pas d'Igor, dans l'ordre où
+faire les choses. **Le tenir à jour** : quand une étape est franchie, la marquer faite plutôt que
+de la laisser traîner. Quand un jalon exige une nouvelle action humaine, l'y ajouter au lieu de
+créer un document parallèle.
+
 ### Suivi Akiflow
 
 Une tâche par jalon (`M0 — Setup…` → `M9 — Lancement`), 3 à 6 sous-tâches maximum, pas de
@@ -200,6 +267,64 @@ recommandation.
   un `build` préalable et échoueraient sur un checkout propre, où `dist` n'existe pas encore.
   **En ajoutant un paquet, ajouter les deux entrées**, et vérifier avec `rm -rf packages/*/dist
 && bun run ci`.
+- **`packages/sync/src/testing/` est exclu du build** (`tsconfig.json` de `sync`) : les générateurs
+  de timelines synthétiques servent aux tests et ne sont pas publiés.
+- **Ne jamais nommer une variable `window`, `process` ou `Buffer` dans `packages/sync`** : un test
+  de neutralité d'environnement échoue sur le nom, commentaires exclus. C'est voulu — ce paquet doit
+  tourner en navigateur, en Worker, sous Bun, et être portable sur la JVM.
+- **`ajv` est CJS** : sous `moduleResolution: nodenext`, l'import par défaut pointe sur l'espace de
+  noms du module. Utiliser l'import nommé (`import { Ajv2020 } from 'ajv/dist/2020.js'`).
+- **Vitest est pinné en 4.x** : `@cloudflare/vitest-pool-workers` exige `vitest ^4.1`, et c'est lui
+  qui exécute les tests d'intégration **dans workerd**. Ne pas remonter sans vérifier le pool.
+- **La date de compatibilité des Workers est `2026-08-22`** : le binaire `workerd` livré avec
+  Miniflare refuse toute date plus récente. Elle apparaît dans `wrangler.jsonc` **et** dans
+  `workers/api/vitest.config.ts` — les deux doivent rester identiques.
+- **`cloudflare:test` se type via le namespace global `Cloudflare.Env`**, pas via `ProvidedEnv`
+  comme dans les versions antérieures du pool. Voir `workers/api/test/env.d.ts`.
+- **`isolatedStorage` du pool ne remet pas la base à zéro** entre deux tests : chaque test appelle
+  `resetDatabase()` et énonce ses propres préconditions.
+- **Ne jamais monter un `use('*')` dans une sous-application montée sur `/`** : son intergiciel
+  s'appliquerait à toutes les requêtes que personne ne résout, et ferait répondre 403 là où il faut
+  404 — ce qui apprendrait à un sondage anonyme quelles routes existent. Intergiciel par route.
+- **`apps/web` doit rester sur TypeScript 5.x** : `astro check` refuse TypeScript 7. Une copie
+  imbriquée dans `apps/web/node_modules/typescript` peut masquer celle de la racine — la supprimer.
+- **Le micro exige un contexte sécurisé.** `localhost` convient pour tester, une IP de réseau local
+  non : il faut HTTPS pour essayer depuis un téléphone.
+- **La position affichée par le compagnon est celle de la timeline des sous-titres**, pas celle du
+  lecteur. Un `.srt` calé sur une autre version du film décale le chiffre affiché **sans** décaler
+  les protections, puisque les scènes viennent du même fichier. Ne jamais « corriger » ce décalage
+  en déplaçant la position : cela casserait un cas qui fonctionne. Le diagnostic distingue un
+  décalage stable (bénin) d'une dérive (vrai problème).
+- **Une mention n'est pas une occurrence** (ADR 0007). `detectFromSubtitles` ne produit des
+  segments protégés qu'à partir des **indications sonores SDH** ; les mots-clés du dialogue
+  passent par `mentionsInSubtitles` et n'alimentent qu'un indicateur de titre. Un dialogue qui
+  parle d'un rat n'indique presque jamais qu'un rat soit à l'écran : confondre les deux avait
+  produit neuf faux positifs sur neuf.
+- **Ne jamais écrire `\b` dans un motif de phobie.** En JavaScript `\b` est défini sur l'ASCII,
+  donc `/\brat\b/` reconnaît « raté ». Utiliser le helper `word()` de `profiles.ts`, qui pose des
+  frontières Unicode.
+- **Les indications sonores sont nominales** (`couinements`, pas `couine`) : une forme conjuguée
+  décrit souvent une personne — `[couine avec enthousiasme]` est un humain.
+- **`detectFromSubtitles` renvoie des indices de répliques, jamais leur texte.** Ce paquet est lu
+  par `calmcut-batch`, où le texte des sous-titres doit être jeté après traitement (principe 1) :
+  le faire remonter dans le type de retour y mettrait un piège permanent. L'appelant qui possède
+  les répliques les retrouve par indice.
+- **Un horodatage renvoyé par Whisper doit tomber dans l'audio fourni** (`sanitizeChunks`). Whisper
+  complète ses fenêtres de 30 s par du silence et peut y placer du texte : accepter un tel
+  horodatage décale l'ancre de plusieurs dizaines de secondes.
+- **L'estimation du débit exige 5 ancres sur 180 s et une erreur type faible.** Une pente calculée
+  sur peu d'ancres décrit le bruit, pas le film. Tant que les conditions ne sont pas réunies, le
+  débit reste à 1 — le comportement de §7.3, donc jamais pire.
+- **La langue de Whisper est obligatoire et typée comme telle.** Ne jamais la rendre optionnelle :
+  sans elle, Whisper transcrit en anglais et le verrouillage est impossible sur tout film non
+  anglophone. `task: 'transcribe'` doit rester explicite, sinon Whisper peut traduire.
+- **Un motif de détection doit être testé sur ce qu'il ne doit PAS reconnaître.** Les tests
+  unitaires de la détection passaient tous : ils vérifiaient les correspondances voulues, jamais
+  l'absence des autres. `packages/phobias/src/regression.test.ts` couvre les pièges réels, avec
+  des répliques **paraphrasées** — le dépôt est public, on n'y recopie pas de sous-titres.
+- **Toute nouvelle couche du compagnon doit être couverte par `demo-chain.test.ts`**, qui teste la
+  chaîne complète sans navigateur. Des couches testées séparément ne garantissent rien sur leur
+  assemblage — c'est ce qui a coûté un test manuel entier.
 - **Les workflows `deploy` et `release` sont éteints par défaut**, derrière les variables de dépôt
   `DEPLOY_ENABLED`, `RELEASE_ENABLED` et `EXTENSION_BUILD_ENABLED`. C'est volontaire : on ne déploie
   pas contre une infrastructure qui n'existe pas. Voir `docs/cloudflare-manual.md`.

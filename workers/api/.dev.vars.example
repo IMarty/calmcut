@@ -1,0 +1,7 @@
+# Copier en `.dev.vars` (ignoré par git) pour le développement local.
+# Ces valeurs sont FACTICES : ne jamais y mettre un vrai secret de production.
+JWT_SECRET="dev-secret-a-remplacer-openssl-rand-base64-48"
+INGEST_TOKEN="dev-ingest-token"
+TURNSTILE_SECRET="1x0000000000000000000000000000000AA"
+TMDB_API_KEY=""
+POSTHOG_KEY=""

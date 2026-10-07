@@ -1,25 +1,38 @@
-import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
+import { workspaceAlias } from './vitest.shared.js'
 
-const src = (pkg: string) =>
-  fileURLToPath(new URL(`./packages/${pkg}/src/index.ts`, import.meta.url))
-
+/**
+ * Deux projets, deux runtimes.
+ *
+ * Le projet `node` couvre les paquets, les outils et le compagnon — du code pur,
+ * testable partout. Le projet `api` tourne **dans workerd**, avec un vrai D1 et un
+ * vrai R2 fournis par Miniflare : c'est le seul endroit où le SQL, les contraintes
+ * et les conflits d'insertion sont réellement exercés.
+ *
+ * `bun run test` lance les deux.
+ */
 export default defineConfig({
-  resolve: {
-    // Les tests visent les sources, pas `dist` : pas de build préalable pour lancer `bun run test`.
-    alias: {
-      '@calmcut/core': src('core'),
-      '@calmcut/sync': src('sync'),
-      '@calmcut/phobias': src('phobias'),
-    },
-  },
   test: {
-    include: ['tests/**/*.test.ts', 'packages/*/src/**/*.test.ts', 'workers/*/src/**/*.test.ts'],
+    projects: [
+      {
+        resolve: { alias: workspaceAlias },
+        test: {
+          name: 'node',
+          include: [
+            'tests/**/*.test.ts',
+            'packages/*/src/**/*.test.ts',
+            'apps/*/src/**/*.test.ts',
+            'tools/*/src/**/*.test.ts',
+          ],
+        },
+      },
+      './workers/api/vitest.config.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['packages/*/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/index.ts'],
+      exclude: ['**/*.test.ts', '**/index.ts', '**/testing/**'],
       // core, sync et la logique de votes sont couverts par contrat (§14).
       thresholds: {
         'packages/core/src/**': { statements: 80, branches: 80, functions: 80, lines: 80 },

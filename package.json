@@ -13,7 +13,7 @@
     "tools/*"
   ],
   "scripts": {
-    "ci": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
+    "ci": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build && bun run size",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -22,21 +22,27 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "bun run --filter '*' build",
-    "clean": "rm -rf node_modules **/node_modules **/dist **/*.tsbuildinfo",
+    "clean": "bun run clean:build && rm -rf node_modules apps/*/node_modules packages/*/node_modules workers/*/node_modules tools/*/node_modules",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "size": "bun run --filter '@calmcut/web' size",
+    "seed": "bun run tools/seed/bin/seed.ts",
+    "clean:build": "rm -rf apps/*/dist apps/*/.astro packages/*/dist workers/*/dist tools/*/dist && find . -name '*.tsbuildinfo' -not -path './node_modules/*' -delete",
+    "ci:clean": "bun run clean:build && bun run ci"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
+    "@cloudflare/workers-types": "^5.20260930.2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.3",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/coverage-v8": "~4.1",
+    "ajv": "^8.20.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.9",
     "typescript": "~5.9",
     "typescript-eslint": "^8.71.0",
-    "vitest": "^5.0.3"
+    "vitest": "~4.1"
   }
 }

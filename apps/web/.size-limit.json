@@ -1,0 +1,24 @@
+[
+  {
+    "name": "shell du compagnon (hors bibliothèque et modèle Whisper)",
+    "path": [
+      "dist/_astro/client.*.js",
+      "dist/_astro/Companion.*.js",
+      "dist/_astro/client.svelte.*.js"
+    ],
+    "limit": "50 kB",
+    "gzip": true
+  },
+  {
+    "name": "worker de synchro (hors Transformers.js, chargé à la demande)",
+    "path": ["dist/_astro/sync.worker-*.js"],
+    "limit": "10 kB",
+    "gzip": true
+  },
+  {
+    "name": "AudioWorklet de capture",
+    "path": ["public/capture-processor.js"],
+    "limit": "2 kB",
+    "gzip": true
+  }
+]

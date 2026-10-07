@@ -1,0 +1,31 @@
+{
+  "name": "@calmcut/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && svelte-check --tsconfig ./tsconfig.json && astro build",
+    "preview": "astro preview",
+    "clean": "rm -rf dist .astro",
+    "check": "astro check && svelte-check --tsconfig ./tsconfig.json",
+    "size": "size-limit"
+  },
+  "dependencies": {
+    "@astrojs/svelte": "^9.0.1",
+    "@calmcut/core": "workspace:*",
+    "@calmcut/phobias": "workspace:*",
+    "@calmcut/player-actions": "workspace:*",
+    "@calmcut/sync": "workspace:*",
+    "@huggingface/transformers": "^4.3.0",
+    "astro": "^7.3.5",
+    "svelte": "^5.57.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@size-limit/file": "^14.1.0",
+    "size-limit": "^14.1.0",
+    "svelte-check": "^4.7.6",
+    "typescript": "~5.9"
+  }
+}

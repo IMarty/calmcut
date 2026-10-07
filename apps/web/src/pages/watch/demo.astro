@@ -1,0 +1,48 @@
+---
+import Companion from '../../components/Companion.svelte'
+import Base from '../../layouts/Base.astro'
+
+// Mode démo : tout se passe dans le navigateur, sans API ni compte. C'est ce mode
+// qui sert au POC du jalon M2.
+---
+
+<Base title="CalmCut — mode démo" description="Tester la protection CalmCut avec vos sous-titres.">
+  <p class="back"><a href="/">← CalmCut</a></p>
+
+  <!-- `client:load` et non `client:idle` : l'utilisateur est venu pour ça. -->
+  <Companion client:load />
+
+  <details class="how">
+    <summary>Comment ça marche</summary>
+    <ol>
+      <li>Vous chargez le fichier de sous-titres du film.</li>
+      <li>
+        CalmCut y repère les scènes, et en tire un index de synchronisation — des empreintes
+        numériques des dialogues, dont on ne peut pas reconstituer le texte.
+      </li>
+      <li>
+        Le micro écoute le film. La reconnaissance vocale tourne <strong>dans ce navigateur</strong>
+        et se cale sur les dialogues. L'audio ne part jamais.
+      </li>
+      <li>Cinq secondes avant une scène, un compte à rebours. Pendant : du bruit blanc.</li>
+    </ol>
+  </details>
+
+  <style>
+    .back {
+      max-width: 34rem;
+      margin: 0 auto 1.5rem;
+    }
+
+    .how {
+      max-width: 34rem;
+      margin: 2.5rem auto 0;
+      font-size: 0.9375rem;
+      color: var(--muted);
+    }
+
+    summary {
+      cursor: pointer;
+    }
+  </style>
+</Base>

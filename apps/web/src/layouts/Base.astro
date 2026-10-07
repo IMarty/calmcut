@@ -1,0 +1,77 @@
+---
+interface Props {
+  title: string
+  description?: string
+}
+
+const { title, description } = Astro.props
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <meta name="color-scheme" content="light dark" />
+    <!-- Pas de police distante : une requête de moins, et rien à attendre. -->
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+
+    <style is:global>
+      :root {
+        --bg: #fbfbfd;
+        --fg: #16161a;
+        --muted: #5b5b66;
+        --surface: #f0f0f4;
+        --border: #d6d6de;
+        --accent: #1f5f4f;
+        --on-accent: #ffffff;
+        --danger: #a4262c;
+        --warn-bg: #fff3d6;
+        --warn-fg: #4a3200;
+        --protect-bg: #16161a;
+        --protect-fg: #f4f4f8;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #101014;
+          --fg: #f2f2f6;
+          --muted: #a0a0ae;
+          --surface: #1c1c22;
+          --border: #32323c;
+          --accent: #4fd0ac;
+          --on-accent: #06251d;
+          --danger: #ff9a9a;
+          --warn-bg: #3d2f00;
+          --warn-fg: #ffe9a8;
+          --protect-bg: #000000;
+          --protect-fg: #f4f4f8;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem 1rem 4rem;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        line-height: 1.5;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+    </style>
+  </body>
+</html>
